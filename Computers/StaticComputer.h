@@ -46,6 +46,7 @@
 #include "../Resources/MersenneTwister.h"
 #include "../State/StaticState.h"
 #include "BaseComputer.h"
+#include "BondList.h"
 #include "Grid.h"
 #include <list>
 
@@ -67,6 +68,8 @@ template <int Dim>
 class CStaticComputer : public CBaseComputer<Dim>
 {
 private:
+	typedef Eigen::Matrix<dbl,Dim,1>   dvec;
+	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 	CStaticState<Dim> &State;
 	CGrid<Dim> Grid;
 
@@ -79,10 +82,12 @@ public:
 //get and set the state
 	const CStaticState<Dim> &GetState() const;
 	void SetState(CStaticState<Dim> & State);
-	
+
+//Compute the bond list
+	void ComputeBondList(CBondList<Dim> &bonds);
 
 //Compute the energy of the system
-    double ComputeEnergy();
+    dbl ComputeEnergy();
     
 //compute the gradient of the energy of the system.
     void ComputeGradient(Eigen::VectorXd &tar);
@@ -101,8 +106,6 @@ public:
 template <int Dim>
 CStaticComputer<Dim>::CStaticComputer()
 {
-
-
 }
 
 
@@ -133,15 +136,43 @@ void CStaticComputer<Dim>::SetState(CStaticState<Dim> & _State)
 	Grid.SetState(&State);
 }
 	
-
-//Compute the energy of the system
+//Compute the bond list
 template <int Dim>
-double CStaticComputer<Dim>::ComputeEnergy()
+void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 {
 	Grid.Construct();
 
-	Eigen::Matrix<double,Dim,1> Displacement;
-	double Energy = 0.0;
+	dvec Displacement;
+	dbl sigma, rlen, rlen2, E, g, k;
+	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
+	{
+		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++) //(*it) is the particle index of a potential neighbor
+		{
+			if((*it)>i)
+			{
+				State.GetDisplacement(i,(*it),Displacement);
+				sigma = State.GetRadius(i) + State.GetRadius(*it);
+				rlen2 = Displacement.squaredNorm();
+				if(rlen2 < sigma*sigma)
+				{
+					rlen = sqrt(rlen2);
+					State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
+					bonds.AddBond( CBond<Dim>(i, (*it), sigma, rlen, E, g, k, Displacement) );
+				}
+			}
+		}
+	}
+	bonds.Volume = 0.;
+}
+
+//Compute the energy of the system
+template <int Dim>
+dbl CStaticComputer<Dim>::ComputeEnergy()
+{
+	Grid.Construct();
+
+	Eigen::Matrix<dbl,Dim,1> Displacement;
+	dbl Energy = 0.0;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++)
@@ -150,8 +181,8 @@ double CStaticComputer<Dim>::ComputeEnergy()
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
-				double rij = State.GetRadius(i) + State.GetRadius((*it));
-				double sqn = Displacement.squaredNorm();
+				dbl rij = State.GetRadius(i) + State.GetRadius((*it));
+				dbl sqn = Displacement.squaredNorm();
 				if(sqn<rij*rij)
 					Energy+= State.GetPotential()->Compute(sqrt(sqn),rij);
 			}
@@ -168,8 +199,8 @@ void CStaticComputer<Dim>::ComputeGradient(Eigen::VectorXd &tar)
 {
 	Grid.Construct();
 
-	Eigen::Matrix<double,Dim,1> Displacement;
-	double Energy = 0.0;
+	Eigen::Matrix<dbl,Dim,1> Displacement;
+	dbl Energy = 0.0;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++)
@@ -177,11 +208,11 @@ void CStaticComputer<Dim>::ComputeGradient(Eigen::VectorXd &tar)
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
-				double rij = State.GetRadius(i) + State.GetRadius((*it));
-				double sqn = Displacement.squaredNorm();
+				dbl rij = State.GetRadius(i) + State.GetRadius((*it));
+				dbl sqn = Displacement.squaredNorm();
 				if(Displacement.squaredNorm()<rij*rij){
 					sqn = sqrt(sqn);
-					double dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);
+					dbl dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);
 					for(int j = 0; j<Dim ; j++)
 					{
 						tar(Dim*i+j) += -dU*Displacement(j)/rij;
@@ -207,8 +238,8 @@ void CStaticComputer<Dim>::ComputeHessian(Eigen::MatrixXd &tar)
 {
 	Grid.Construct();
 
-	Eigen::Matrix<double,Dim,1> Displacement;
-	double Energy = 0.0;
+	Eigen::Matrix<dbl,Dim,1> Displacement;
+	dbl Energy = 0.0;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++)
@@ -216,17 +247,17 @@ void CStaticComputer<Dim>::ComputeHessian(Eigen::MatrixXd &tar)
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
-				double rij = State.GetRadius(i) + State.GetRadius((*it));
-				double sqn = Displacement.squaredNorm();
+				dbl rij = State.GetRadius(i) + State.GetRadius((*it));
+				dbl sqn = Displacement.squaredNorm();
 				if(Displacement.squaredNorm()<rij*rij){
 					sqn = sqrt(sqn);
-					double dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);					
-					double d2U = State.GetPotential()->ComputeSecondDerivative(sqn,rij);
+					dbl dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);					
+					dbl d2U = State.GetPotential()->ComputeSecondDerivative(sqn,rij);
 					//map the block hessian into the actual hessian
 					int j = (*it);
                     for(int q = 0 ; q<Dim ; q++)
 					{
-						double ii = dU*(1.0-Displacement(q)*Displacement(q)/sqn)/rij + d2U*Displacement(q)*Displacement(q)/sqn;
+						dbl ii = dU*(1.0-Displacement(q)*Displacement(q)/sqn)/rij + d2U*Displacement(q)*Displacement(q)/sqn;
 						//i_qi_q
 						tar(Dim*i+q,Dim*i+q)+=ii;
 						tar(Dim*j+q,Dim*j+q)+=ii;
@@ -235,7 +266,7 @@ void CStaticComputer<Dim>::ComputeHessian(Eigen::MatrixXd &tar)
 						tar(Dim*j+q,Dim*i+q)-=ii;
 						for(int q2 = q+1 ; q2<Dim ; q2++)
 						{
-							double ij = Displacement(q)*Displacement(q2)/sqn*(-dU/rij + d2U);
+							dbl ij = Displacement(q)*Displacement(q2)/sqn*(-dU/rij + d2U);
 						
 							//i_qi_q2
 							tar(Dim*i+q,Dim*i+q2)+=ij;
@@ -263,8 +294,8 @@ void CStaticComputer<Dim>::ComputeDynamicalMatrix(Eigen::MatrixXd &tar)
 {
 	Grid.Construct();
 
-	Eigen::Matrix<double,Dim,1> Displacement;
-	double Energy = 0.0;
+	Eigen::Matrix<dbl,Dim,1> Displacement;
+	dbl Energy = 0.0;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++)
@@ -272,20 +303,20 @@ void CStaticComputer<Dim>::ComputeDynamicalMatrix(Eigen::MatrixXd &tar)
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
-				double rij = State.GetRadius(i) + State.GetRadius((*it));
-				double sqn = Displacement.squaredNorm();
+				dbl rij = State.GetRadius(i) + State.GetRadius((*it));
+				dbl sqn = Displacement.squaredNorm();
 				if(Displacement.squaredNorm()<rij*rij){
-					double mass1 = 1.0/pow(State.GetRadius(i)*State.GetRadius(i),Dim/2.0);//1.0/Particles[i].Radius/Particles[i].Radius/Scale/Scale;
-                    double mass2 = 1.0/pow(State.GetRadius((*it))*State.GetRadius((*it)),Dim/2.0);//1.0/Particles[j].Radius/Particles[j].Radius/Scale/Scale;
-                    double mass12 = 1.0/pow(State.GetRadius(i)*State.GetRadius((*it)),Dim/2.0);
+					dbl mass1 = 1.0/pow(State.GetRadius(i)*State.GetRadius(i),Dim/2.0);//1.0/Particles[i].Radius/Particles[i].Radius/Scale/Scale;
+                    dbl mass2 = 1.0/pow(State.GetRadius((*it))*State.GetRadius((*it)),Dim/2.0);//1.0/Particles[j].Radius/Particles[j].Radius/Scale/Scale;
+                    dbl mass12 = 1.0/pow(State.GetRadius(i)*State.GetRadius((*it)),Dim/2.0);
 					sqn = sqrt(sqn);
-					double dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);					
-					double d2U = State.GetPotential()->ComputeSecondDerivative(sqn,rij);
+					dbl dU = State.GetPotential()->ComputeFirstDerivative(sqn,rij);					
+					dbl d2U = State.GetPotential()->ComputeSecondDerivative(sqn,rij);
 					//map the block hessian into the actual hessian
 					int j = (*it);
                     for(int q = 0 ; q<Dim ; q++)
 					{
-						double ii = dU*(1.0-Displacement(q)*Displacement(q)/sqn)/rij + d2U*Displacement(q)*Displacement(q)/sqn;
+						dbl ii = dU*(1.0-Displacement(q)*Displacement(q)/sqn)/rij + d2U*Displacement(q)*Displacement(q)/sqn;
 						//i_qi_q
 						tar(Dim*i+q,Dim*i+q)+=mass1*ii;
 						tar(Dim*j+q,Dim*j+q)+=mass2*ii;
@@ -294,7 +325,7 @@ void CStaticComputer<Dim>::ComputeDynamicalMatrix(Eigen::MatrixXd &tar)
 						tar(Dim*j+q,Dim*i+q)-=mass12*ii;
 						for(int q2 = q+1 ; q2<Dim ; q2++)
 						{
-							double ij = Displacement(q)*Displacement(q2)/sqn*(-dU/rij + d2U);
+							dbl ij = Displacement(q)*Displacement(q2)/sqn*(-dU/rij + d2U);
 						
 							//i_qi_q2
 							tar(Dim*i+q,Dim*i+q2)+=mass1*ij;

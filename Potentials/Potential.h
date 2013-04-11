@@ -97,9 +97,8 @@ public:
 	virtual dbl ComputeThirdDerivative(dbl dr, dbl r) const = 0;
 
 //functions to compute multiple derivatives at a time
-//WARNING: the 4th argument returns f = -d2U/dr2.
-	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &f) const = 0;
-	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &f, dbl &k) const = 0;
+	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const = 0;
+	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;
 	
 //functions to get other properties of the potential
 	virtual dbl ComputeSupport(dbl r) const = 0;

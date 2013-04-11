@@ -66,6 +66,10 @@ int main()
 	
 	LiuJamming::CStaticComputer<2> Computer(System);
 	cout << "Energy = " << Computer.ComputeEnergy() << endl;
+
+	CBondList<2> bonds;
+	Computer.ComputeBondList(bonds);
+	printf("number of bonds = %i\n", (int)bonds.list.size());
 	
 	
 	return 0;
