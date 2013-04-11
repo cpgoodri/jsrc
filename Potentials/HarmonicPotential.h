@@ -69,6 +69,7 @@ public:
 	dbl Compute(dbl dr,dbl r) const;
 	dbl ComputeFirstDerivative(dbl dr,dbl r) const;
 	dbl ComputeSecondDerivative(dbl dr,dbl r) const;
+	dbl ComputeThirdDerivative(dbl dr,dbl r) const;
 
 //functions to compute multiple derivatives at a time
 //WARNING: the 4th argument returns f = -d2U/dr2.

@@ -1,4 +1,4 @@
-DIR = /data0/home/cpgoodri/jcode/jamming/src
+DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
 
 name=Test_Computer
 obj=$(name).o
@@ -24,7 +24,7 @@ $(patsubst %,$(prjDIR)/%,$(prjOBJGQS))
 .cpp.o:
 	$(CRULE)
 
-$(name): $(OBJGQS) $(StandardDependencies)
+$(name).out: $(OBJGQS) $(StandardDependencies)
 	$(ORULE)
 
 

@@ -1,4 +1,6 @@
-srcDIR = /data0/home/cpgoodri/jcode/jamming/src
+#srcDIR = /data0/home/cpgoodri/jcode/jamming/jsrc
+
+srcDIR = $(DIR)
 
 srcOBJGQS = \
 Resources/Resources.o \
@@ -34,12 +36,13 @@ LIBRARY = \
 SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack 
 netCDFLINK = -lnetcdf_c++ -lnetcdf
 hdf5LINK = -lhdf5_hl -lhdf5 -lz
-LINK = $(SuiteSparseLINK)  -lgfortran -larpack $(netCDFLINK) $(hdf5LINK) -lm
+intelLINK = -lifcore -limf -lm
+LINK = $(SuiteSparseLINK)  -lgfortran -larpack $(netCDFLINK) $(hdf5LINK) $(intelLINK)
 
 
 FRULE = $(FF)  $(FFLAGS) $(INCLUDE) -c -o $@ $<
 CRULE = $(CPP) $(CFLAGS) $(INCLUDE) -c -o $@ $<
-ORULE = $(CPP) $(CFLAGS) -o $@.out $(OBJGQS) $(LIBRARY) $(LINK)
+ORULE = $(CPP) $(CFLAGS) -o $@ $(OBJGQS) $(LIBRARY) $(LINK)
 
 
 StandardDependencies = \
