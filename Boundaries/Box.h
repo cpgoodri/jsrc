@@ -1,0 +1,312 @@
+#ifndef BOX
+
+#define BOX
+
+/////////////////////////////////////////////////////////////////////////////////
+//Box class. 
+//
+//Description
+//		This is a virtual class that describes box shape. The shape of the box is
+//		specified by a dxd matrix that describes the mapping from the unit box [0,1]x...x[0,1]
+//		to a corresponding parallelpiped. Overloaded classes will specify the box topology
+//		by specifying how the various edges of the box connect to one another. This class
+//		implements functions to take points from the base space to the image space. Virtual
+//		functions are provided to move points and compute minimum displacements between 
+//		points. 
+//
+//		A framework to generically read and write box configurations to and from netcdf
+//		files is also implemented. New box objects that inherit from the box class need
+//		to register a string with their name to the map of box types. They must also specify
+//		how to read/write any parameters (which must all be doubles) to a string. Inherited
+//		objects must further implement several copy constructors. Finally, inherited classes must 
+//		implement a function to create a new object of the given class.
+//
+//Global Variables
+//		A map from string to box type as an STL map.
+//
+//Variables
+// 		Transformation as a dxd matrix.
+//		Inverse transformation as a dxd matrix.
+//		
+//Implements
+//		Reading/Writing to netcdf files.
+//		Mapping to and from the unit box to a transformed parallelopiped.
+//
+//Virtual Functions
+//		Calculating minimal distances between points.
+//		Moving particles while respecting the boundary conditions.
+//		Mapping the system parameters to and from a string.
+//
+//File Formats
+//		NetCDF
+//			## Note: only files of a single Dimension may be stored in a given 
+//			## file. To denote whether the NetCDF file has been populated with variables,
+//			## dimensions, etc... an attribute "Box_Populated" gets created.
+//			-> Two dimensions: records (unlimited) and dimension.
+//			-> One attribute Box_Populated.
+//			-> Transformation as a variable
+//			-> String of parameters as a string.
+//
+/////////////////////////////////////////////////////////////////////////////////
+
+#include "../Resources/std_include.h"
+#include <Eigen/LU>
+#include "../Resources/MersenneTwister.h"
+#include "netcdfcpp.h"
+#include <map>
+#include <string>
+
+namespace LiuJamming
+{
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////   CLASS DEFINITION  //////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+template <int Dim>
+class CBox
+{
+private:
+//global variables to read box configurations
+	static std::map<string,CBox<Dim>*> BoxTypes;
+
+//Functions to check that the correct dimensions, variables, and attributes are present
+//in a netCDF file.
+	static bool CheckNetCDF(const NcFile &file);
+	static void PopulateNetCDF(NcFile &file);
+	
+public:
+//global functions to read box configurations
+	static CBox *Read(const NcFile &file,int record);
+	static void AddBoxType(string type,CBox *box);
+
+private:
+//variables specifying the transformation
+	Eigen::Matrix<double,Dim,Dim> Transformation; 
+	Eigen::Matrix<double,Dim,Dim> Inverse_Transformation;
+	
+public:
+//constructors and copy operators
+	CBox();
+	CBox(const Eigen::Matrix<double,Dim,Dim> Trans);
+	CBox(double sx, double sy, double sz);
+	CBox(const CBox &box);
+	
+	const CBox &operator=(const CBox &box);
+
+//functions to write box configurations
+	void Write(NcFile &file,int record); 
+	virtual string DataToString() = 0;
+	
+//functions to read box configurations
+ 	virtual void StringToData(string Data) = 0;
+ 	virtual CBox *Create() = 0;
+	
+//functions using the transformation matrix
+	void SetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans);
+	void GetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans);
+	void Transform(Eigen::Matrix<double,Dim,1> &Point);
+	void Transform(Eigen::VectorXd &Points);
+	void InverseTransform(Eigen::Matrix<double,Dim,1> &Point);
+	void InverseTransform(Eigen::VectorXd &Points);
+	
+//functions involving the boundary
+	virtual void MoveParticles(Eigen::VectorXd &Points,Eigen::VectorXd &Displacements)  {};
+	virtual void MinimumDisplacement(const Eigen::Matrix<double,Dim,1> &PointA, const Eigen::Matrix<double,Dim,1> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const {};
+	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const {};
+
+};
+
+template <int Dim>
+std::map<string,CBox<Dim>*> CBox<Dim>::BoxTypes;
+
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////   IMPLEMENTATION   ///////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+//global functions to read box configurations
+template <int Dim>
+CBox<Dim> *CBox<Dim>::Read(const NcFile &file,int record)
+{
+	if(!CheckNetCDF(file))
+		throw(CException("CBox<Dim>::ReadBox","Attempting to read a box from a file that has no appropriate box data."));
+	
+	if(Dim!=file.get_dim("System_Dimension")->size())
+		throw(CException("CBox<Dim>::ReadBox","Attempting to read a box from a record has an inconsistent nubmer of dimensions."));
+	
+	if(record>=file.get_dim("Records")->size())
+		throw(CException("CBox<Dim>::ReadBox","Attempting to read a box from a record that does not exist."));
+
+	//read the matrix
+	Eigen::Matrix<double,Dim,Dim> Transformation;
+	NcVar *TransVar = file.get_var("Box_Transformation");
+	TransVar->set_cur(record);
+	TransVar->get(Transformation.data(),1,Dim,Dim);
+	
+	//read the box type
+	char data[256];
+	NcVar *DataVar = file.get_var("Box_Data");
+	DataVar->set_cur(record);
+	DataVar->get(data,1,256);
+	string s_data = data;
+	//split up the string using colons.
+	vector<string> split = SplitString(s_data,":");
+	//the first element of the split string should be the box name so create that kind of box
+	CBox *box = BoxTypes[split[0]]->Create();
+	//go set the data using the rest of the string and set the transformation
+	box->StringToData(s_data);
+	box->SetTransformation(Transformation);
+	
+	return box;
+}
+
+template <int Dim>
+void CBox<Dim>::AddBoxType(string type,CBox<Dim> *box)
+{
+	BoxTypes[type] = box;
+}
+
+//Functions to check that the correct dimensions, variables, and attributes are present
+//in a netCDF file.
+template <int Dim>
+bool CBox<Dim>::CheckNetCDF(const NcFile &file)
+{
+	return (file.get_att("Box_Populated")!=NULL);
+}
+
+//NOTE: at the moment this assumes that the box class will only ever be saved through the system class. Is this a good assumption?
+template <int Dim>
+void CBox<Dim>::PopulateNetCDF(NcFile &file)
+{
+	NcDim *recorddim = file.get_dim("Records");
+	NcDim *dimdim = file.get_dim("System_Dimension");
+	NcDim *datadim = file.get_dim("Data_Size");
+	if(datadim==NULL)
+		datadim = file.add_dim("Data_Size",256);
+
+	file.add_att("Box_Populated",1);
+
+	file.add_var("Box_Transformation",ncDouble,recorddim,dimdim,dimdim);
+	file.add_var("Box_Data",ncChar,recorddim,datadim);
+}
+	
+//constructors and copy operators
+template <int Dim>
+CBox<Dim>::CBox()
+{
+	Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
+	Inverse_Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
+}
+
+template <int Dim>
+CBox<Dim>::CBox(const Eigen::Matrix<double,Dim,Dim> Trans)
+{
+	Transformation = Trans;
+	Inverse_Transformation = Transformation.inverse();
+}
+	
+template<int Dim>
+CBox<Dim>::CBox(double sx, double sy, double sz)
+{
+	Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
+	Inverse_Transformation = Transformation.inverse();
+}
+
+template <int Dim>
+CBox<Dim>::CBox(const CBox &box) : Transformation(box.Transformation) 
+{
+	Inverse_Transformation = Transformation.inverse();
+}
+
+template <int Dim> 
+const CBox<Dim> &CBox<Dim>::operator=(const CBox<Dim> &box)
+{
+	Transformation = box.GetTransformation();
+	Inverse_Transformation = Transformation.inverse();
+}
+
+//functions to write box configurations
+template <int Dim>
+void CBox<Dim>::Write(NcFile &file,int record)
+{
+	cout << "Saving box.\n";
+	if(!CheckNetCDF(file))
+		PopulateNetCDF(file);
+		
+	if(Dim!=file.get_dim("System_Dimension")->size())
+		throw(CException("CBox<Dim>::WriteBox","Attempting to read a box from a record has an inconsistent nubmer of dimensions."));
+	
+	if(record>file.get_dim("Records")->size())
+		throw(CException("CBox<Dim>::WriteBox","Attempting to read a box from a record that does not exist."));
+	
+	NcVar *TransVar = file.get_var("Box_Transformation");
+	
+	cout << "Writing transformation.\n";
+	
+	TransVar->set_cur(record);
+	TransVar->put(Transformation.data(),1,Dim,Dim);
+	
+	cout << "Writing box data.\n";
+	
+	NcVar *DataVar = file.get_var("Box_Data");
+	string str_data = DataToString();
+	DataVar->set_cur(record);
+	DataVar->put(str_data.c_str(),1,str_data.size());
+}
+
+	
+//functions to read box configurations
+	
+//functions using the transformation matrix
+template <int Dim>
+void CBox<Dim>::SetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans)
+{
+	Transformation = Trans;
+	Inverse_Transformation = Transformation.inverse();
+}
+
+template <int Dim>
+void CBox<Dim>::GetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans)
+{
+	Trans = Transformation;
+}
+
+template <int Dim>
+void CBox<Dim>::Transform(Eigen::Matrix<double,Dim,1> &Point)
+{
+	Point = Transformation * Point;	
+}
+
+template <int Dim>
+void CBox<Dim>::Transform(Eigen::VectorXd &Points)
+{
+	for(int i = 0 ; i<Points.rows()/Dim ; i++)
+		Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
+}
+
+template <int Dim>
+void CBox<Dim>::InverseTransform(Eigen::Matrix<double,Dim,1> &Point)
+{
+	Point = Inverse_Transformation * Point;
+}
+
+template <int Dim>
+void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points)
+{
+	for(int i = 0 ; i<Points.rows()/Dim ; i++)
+		Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
+}
+
+
+}
+
+#endif
