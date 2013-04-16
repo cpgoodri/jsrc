@@ -63,6 +63,8 @@ using namespace std;
 template <int Dim>
 class CGrid
 {
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 public:
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
@@ -367,7 +369,11 @@ typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 }
 
 template <int Dim>
+<<<<<<< HEAD
 Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
+=======
+dvec CGrid<Dim>::ComputeCellSize()
+>>>>>>> origin/master
 {
 	dbl MaximumRadius = 0.0;
 	Eigen::VectorXd Rads;
