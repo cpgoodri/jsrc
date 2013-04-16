@@ -71,6 +71,9 @@ template <int Dim>
 class CBox
 {
 private:
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+
 //global variables to read box configurations
 	static std::map<string,CBox<Dim>*> BoxTypes;
 
@@ -86,14 +89,14 @@ public:
 
 private:
 //variables specifying the transformation
-	Eigen::Matrix<double,Dim,Dim> Transformation; 
-	Eigen::Matrix<double,Dim,Dim> Inverse_Transformation;
+	dmat Transformation; 
+	dmat Inverse_Transformation;
 	
 public:
 //constructors and copy operators
 	CBox();
-	CBox(const Eigen::Matrix<double,Dim,Dim> Trans);
-	CBox(double sx, double sy, double sz);
+	CBox(const dmat Trans);
+	CBox(dbl sx, dbl sy, dbl sz);
 	CBox(const CBox &box);
 	
 	const CBox &operator=(const CBox &box);
@@ -107,17 +110,17 @@ public:
  	virtual CBox *Create() = 0;
 	
 //functions using the transformation matrix
-	void SetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans);
-	void GetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans);
-	void Transform(Eigen::Matrix<double,Dim,1> &Point);
+	void SetTransformation(dmat &Trans);
+	void GetTransformation(dmat &Trans);
+	void Transform(dvec &Point);
 	void Transform(Eigen::VectorXd &Points);
-	void InverseTransform(Eigen::Matrix<double,Dim,1> &Point);
+	void InverseTransform(dvec &Point);
 	void InverseTransform(Eigen::VectorXd &Points);
 	
 //functions involving the boundary
 	virtual void MoveParticles(Eigen::VectorXd &Points,Eigen::VectorXd &Displacements)  {};
-	virtual void MinimumDisplacement(const Eigen::Matrix<double,Dim,1> &PointA, const Eigen::Matrix<double,Dim,1> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const {};
-	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const {};
+	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const {};
+	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const {};
 
 };
 
@@ -147,7 +150,7 @@ CBox<Dim> *CBox<Dim>::Read(const NcFile &file,int record)
 		throw(CException("CBox<Dim>::ReadBox","Attempting to read a box from a record that does not exist."));
 
 	//read the matrix
-	Eigen::Matrix<double,Dim,Dim> Transformation;
+	dmat Transformation;
 	NcVar *TransVar = file.get_var("Box_Transformation");
 	TransVar->set_cur(record);
 	TransVar->get(Transformation.data(),1,Dim,Dim);
@@ -203,21 +206,21 @@ void CBox<Dim>::PopulateNetCDF(NcFile &file)
 template <int Dim>
 CBox<Dim>::CBox()
 {
-	Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
-	Inverse_Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
+	Transformation = dmat::Identity();
+	Inverse_Transformation = dmat::Identity();
 }
 
 template <int Dim>
-CBox<Dim>::CBox(const Eigen::Matrix<double,Dim,Dim> Trans)
+CBox<Dim>::CBox(const dmat Trans)
 {
 	Transformation = Trans;
 	Inverse_Transformation = Transformation.inverse();
 }
 	
 template<int Dim>
-CBox<Dim>::CBox(double sx, double sy, double sz)
+CBox<Dim>::CBox(dbl sx, dbl sy, dbl sz)
 {
-	Transformation = Eigen::Matrix<double,Dim,Dim>::Identity();
+	Transformation = dmat::Identity();
 	Inverse_Transformation = Transformation.inverse();
 }
 
@@ -268,20 +271,20 @@ void CBox<Dim>::Write(NcFile &file,int record)
 	
 //functions using the transformation matrix
 template <int Dim>
-void CBox<Dim>::SetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans)
+void CBox<Dim>::SetTransformation(dmat &Trans)
 {
 	Transformation = Trans;
 	Inverse_Transformation = Transformation.inverse();
 }
 
 template <int Dim>
-void CBox<Dim>::GetTransformation(Eigen::Matrix<double,Dim,Dim> &Trans)
+void CBox<Dim>::GetTransformation(dmat &Trans)
 {
 	Trans = Transformation;
 }
 
 template <int Dim>
-void CBox<Dim>::Transform(Eigen::Matrix<double,Dim,1> &Point)
+void CBox<Dim>::Transform(dvec &Point)
 {
 	Point = Transformation * Point;	
 }
@@ -294,7 +297,7 @@ void CBox<Dim>::Transform(Eigen::VectorXd &Points)
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransform(Eigen::Matrix<double,Dim,1> &Point)
+void CBox<Dim>::InverseTransform(dvec &Point)
 {
 	Point = Inverse_Transformation * Point;
 }

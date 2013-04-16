@@ -64,6 +64,9 @@ template <int Dim>
 class CGrid
 {
 public:
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+
 	class iterator {
 	private:
 		list<int>::iterator CurrentCell;
@@ -122,7 +125,7 @@ private:
 	int N;
 
 	//Cell size given by twice the maximum radius.
-	Eigen::Matrix<double,Dim,1> CellSize;
+	dvec CellSize;
 	
 	//The number of cells in each dimension
 	int N_Cells[Dim];
@@ -152,12 +155,12 @@ public:
 	void Construct();
 
 //Functions to access the grid
- 	void CellToCoordinates(int i, Eigen::Matrix<double,Dim,1> &coordinates);
-	int CoordinatesToCell(const Eigen::Matrix<double,Dim,1> &coordinates);
+ 	void CellToCoordinates(int i, dvec &coordinates);
+	int CoordinatesToCell(const dvec &coordinates);
 	iterator GetParticleIterator(int i);
 	
 //Function to compute the grid cell size ; 
-	Eigen::Matrix<double,Dim,1> ComputeCellSize();
+	dvec ComputeCellSize();
 	
 
 };
@@ -193,6 +196,7 @@ CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
 	DualList = NULL;
 }
 
+//Possible memory leak!
 template <int Dim>
 const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 {
@@ -286,14 +290,14 @@ void CGrid<Dim>::Construct()
 
 	//Now construct the dual list
 	//go through each pair of cells and find their coordinates
-	Eigen::Matrix<double,Dim,1> Displacement;
+	dvec Displacement;
 	for(int i = 0 ; i < TotalCells ; i++)
 	{
-		Eigen::Matrix<double,Dim,1> CoordinateI;
+		dvec CoordinateI;
 		CellToCoordinates(i,CoordinateI);
 		for(int j = i ; j < TotalCells ; j++)
 		{
-			Eigen::Matrix<double,Dim,1> CoordinateJ;
+			dvec CoordinateJ;
 			CellToCoordinates(j,CoordinateJ);
 			
 			State->GetBox()->MinimumDisplacement(CoordinateI,CoordinateJ,Displacement);
@@ -321,11 +325,11 @@ void CGrid<Dim>::Construct()
 
 //Functions to access the grid
 template<int Dim>
-void CGrid<Dim>::CellToCoordinates(int i,Eigen::Matrix<double,Dim,1> &Coordinate)
+void CGrid<Dim>::CellToCoordinates(int i,dvec &Coordinate)
 {
 	int Prod = 1;
 	int LProd = 1;
-	double Sub = 0;
+	dbl Sub = 0;
 	for(int k = 0 ; k < Dim ; k++){
 		Prod*=N_Cells[k];
 		Coordinate(k) = (i%Prod) - Sub;
@@ -339,7 +343,7 @@ void CGrid<Dim>::CellToCoordinates(int i,Eigen::Matrix<double,Dim,1> &Coordinate
 }
 	
 template <int Dim>
-int CGrid<Dim>::CoordinatesToCell(const Eigen::Matrix<double,Dim,1> &coordinates)
+int CGrid<Dim>::CoordinatesToCell(const dvec &coordinates)
 {
 	int Cell_Index = 0;
 	int Prod = 1;
@@ -355,7 +359,7 @@ int CGrid<Dim>::CoordinatesToCell(const Eigen::Matrix<double,Dim,1> &coordinates
 template <int Dim>
 typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 {
-	Eigen::Matrix<double,Dim,1> pos;
+	dvec pos;
 	State->GetParticlePositionVirtual(pos,i);
 	int j = CoordinatesToCell(pos);
 	typename CGrid<Dim>::iterator ret(DualList[j],OccupancyList,CellList);
@@ -363,9 +367,9 @@ typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 }
 
 template <int Dim>
-Eigen::Matrix<double,Dim,1> CGrid<Dim>::ComputeCellSize()
+Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
 {
-	double MaximumRadius = 0.0;
+	dbl MaximumRadius = 0.0;
 	Eigen::VectorXd Rads;
 	State->GetRadii(Rads);
 
@@ -373,11 +377,11 @@ Eigen::Matrix<double,Dim,1> CGrid<Dim>::ComputeCellSize()
 		if(Rads(i)>MaximumRadius)
 			MaximumRadius = Rads(i);
 
-	double Scale = 2*MaximumRadius;
-	double N = floor(1.0/Scale);
+	dbl Scale = 2*MaximumRadius;
+	dbl N = floor(1.0/Scale);
 	Scale = 1.0/N;
 
-	Eigen::Matrix<double,Dim,1> ret = Eigen::Matrix<double,Dim,1>::Constant(Scale);
+	dvec ret = dvec::Constant(Scale);
 	
 	return ret;
 }
