@@ -18,14 +18,17 @@ $(patsubst %,$(prjDIR)/%,$(prjOBJGQS))
 
 
 
-.f.o:
+.f.o: 
 	$(FRULE)
 
-.cpp.o:
+.cpp.o: 
 	$(CRULE)
 
-$(name).out: $(OBJGQS) $(StandardDependencies)
+$(name).out: $(OBJGQS)
 	$(ORULE)
+
+#if any header file is changed, the project file gets recompiled.
+$(obj): $(StandardDependencies)
 
 
 

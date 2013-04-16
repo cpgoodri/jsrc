@@ -37,17 +37,20 @@ namespace LiuJamming
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-template <int Dim>
+template <int Dim, int NonPeriodicDim=0>
 class CPeriodicBox : public CBox<Dim>
 {	
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+
 public:
 //constructors and copy operators
 	CPeriodicBox();
-	CPeriodicBox(const Eigen::Matrix<double,Dim,Dim> Trans);
-	CPeriodicBox(double sx, double sy, double sz);
+	CPeriodicBox(const dmat Trans);
+	CPeriodicBox(dbl sx, dbl sy, dbl sz);
 	CPeriodicBox(const CPeriodicBox &box);
 	
-	const CPeriodicBox<Dim> &operator=(const CPeriodicBox<Dim> &box);
+	const CPeriodicBox<Dim,NonPeriodicDim> &operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box);
 
 //functions to write box configurations
 	string DataToString();
@@ -57,9 +60,10 @@ public:
  	CBox<Dim> *Create();
  	
 //functions involving the boundary
-	void MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements);
-	void MinimumDisplacement(const Eigen::Matrix<double,Dim,1> &PointA,const Eigen::Matrix<double,Dim,1> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const;
-	void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const;
+	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements);
+	void ApplyPeriodicBC(Eigen::VectorXd &Points);
+	void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
+	void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA, const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -71,81 +75,110 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 
 //constructors and copy operators
-template <int Dim>
-CPeriodicBox<Dim>::CPeriodicBox() : CBox<Dim>()
+template <int Dim, int NonPeriodicDim>
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox() : CBox<Dim>()
 {
 
 }
 
-template <int Dim>
-CPeriodicBox<Dim>::CPeriodicBox(const Eigen::Matrix<double,Dim,Dim> Trans) : CBox<Dim>(Trans)
+template <int Dim, int NonPeriodicDim>
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const dmat Trans) : CBox<Dim>(Trans)
 {
 
 
 }
 
-template <int Dim>
-CPeriodicBox<Dim>::CPeriodicBox(double sx, double sy, double sz) : CBox<Dim>(sx,sy,sz)
+template <int Dim, int NonPeriodicDim>
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(dbl sx, dbl sy, dbl sz) : CBox<Dim>(sx,sy,sz)
 {
 
 }
 
-template <int Dim>
-CPeriodicBox<Dim>::CPeriodicBox(const CPeriodicBox &box) : CBox<Dim>(box)
+template <int Dim, int NonPeriodicDim>
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const CPeriodicBox &box) : CBox<Dim>(box)
 {
 
 }
 
-template <int Dim>	
-const CPeriodicBox<Dim> &CPeriodicBox<Dim>::operator=(const CPeriodicBox<Dim> &box)
+template <int Dim, int NonPeriodicDim>	
+const CPeriodicBox<Dim,NonPeriodicDim> &CPeriodicBox<Dim,NonPeriodicDim>::operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box)
 {
 	CBox<Dim>::operator=(box);
 	return *this;
 }
 
 //functions to write box configurations
-template <int Dim>
-string CPeriodicBox<Dim>::DataToString()
+template <int Dim, int NonPeriodicDim>
+string CPeriodicBox<Dim,NonPeriodicDim>::DataToString()
 {
 	return "PeriodicBox";
 }
 	
 //functions to read box configurations
-template <int Dim>
-void CPeriodicBox<Dim>::StringToData(string Data)
+template <int Dim, int NonPeriodicDim>
+void CPeriodicBox<Dim,NonPeriodicDim>::StringToData(string Data)
 {
 
 }
 
-template <int Dim>
-CBox<Dim> *CPeriodicBox<Dim>::Create()
+template <int Dim, int NonPeriodicDim>
+CBox<Dim> *CPeriodicBox<Dim,NonPeriodicDim>::Create()
 {
 	return new CPeriodicBox<Dim>();
 }
- 	
+
+
+//	class PeriodicBCs
+//		This class implements a function to move particle positions
+//			according to periodic boundary conditions
+//		It is a templated class with a partial specialization
+//			to handle the common case of full periodic BCs.
+template<int Dim, int NonPeriodicPos>class PeriodicBCs
+{
+	static inline void apply(Eigen::VectorXd &Points){
+		assert(Points.cols()%Dim==0);
+		int np = Points.cols()/Dim;
+		for(int i=0; i<np; i++)
+			for(int dd=NonPeriodicDim; dd<Dim; dd++)
+				Points(i*Dim+dd) -= floor(Points(i*Dim+dd));
+	};
+};
+template<int Dim>class PeriodicBCs<Dim,0>
+{
+	static inline void apply(Eigen::VectorXd &Points){
+		for(int i = 0; i< Points.cols() ; i++)
+			Points(i) -= floor(Points(i));
+	};
+};
+
 //functions involving the boundary
-template <int Dim>
-void CPeriodicBox<Dim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements)
+template <int Dim, int NonPeriodicDim>
+void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements)
 {
 	Points += Displacements;
-	for(int i = 0; i< Points.cols() ; i++)
-		Points(i) -= floor(Points(i));
+	PeriodicBCs<Dim,NonPeriodicPos>::apply(Points);
+//	ApplyPeriodicBC<Dim,NonPeriodicDim>(Points);
 }
 
-template <int Dim>
-void CPeriodicBox<Dim>::MinimumDisplacement(const Eigen::Matrix<double,Dim,1> &PointA,const Eigen::Matrix<double,Dim,1> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const
+//These two methods assume:
+//	1. the box has dimensions 1.
+//	2. all particles are within the box.
+//
+//I'm not sure if this will work with free boundary conditions
+template <int Dim, int NonPeriodicDim>
+void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvec &PointA,const dvec &PointB, dvec &Displacement) const
 {
 	Displacement = PointA-PointB;
-	for(int i = 0 ; i < Dim ; i++)
+	for(int i = NonPeriodicDim ; i < Dim ; i++)
 		if(abs(Displacement(i))>0.5)
 			Displacement(i)-=sgn(Displacement(i));
 }
 
-template <int Dim>
-void CPeriodicBox<Dim>::MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, Eigen::Matrix<double,Dim,1> &Displacement) const
+template <int Dim, int NonPeriodicDim>
+void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const
 {
 	Displacement = PointA-PointB;
-	for(int i = 0 ; i < Dim ; i++)
+	for(int i = NonPeriodicDim ; i < Dim ; i++)
 		if(abs(Displacement(i))>0.5)
 			Displacement(i)-=sgn(Displacement(i));
 }
