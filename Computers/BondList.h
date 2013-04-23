@@ -2,7 +2,7 @@
 #define BOND_LIST_H
 
 #include "../Resources/std_include.h"
-#include <Eigen/Sparse>
+//#include <Eigen/Sparse>
 #include "Bond.h"
 
 template<int Dim>
@@ -33,7 +33,7 @@ public:
 
 	//Compute gradient and hessian
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const; //Returns the energy
-	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const;  //hess is NOT mass-normalized
+//	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const;  //hess is NOT mass-normalized
 //	void ComputeHessian_BZ(Eigen::SparseMatrix< std::complex<dbl> > &hess, dvec k) const;  //hess is NOT mass-normalized
 };
 
@@ -97,7 +97,7 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 	dbl energy = 0.;
 	dvec temp;
 	int dd;
-	for(std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 	{
 		energy += b->E;
 		temp = (b->g/b->rlen)*b->r;

@@ -42,6 +42,7 @@ class CPeriodicBox : public CBox<Dim>
 {	
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+	typedef Eigen::VectorBlock<Eigen::VectorXd,Dim> dvecBlock;
 
 public:
 //constructors and copy operators
@@ -61,6 +62,7 @@ public:
  	
 //functions involving the boundary
 	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements);
+	void MoveParticle(dvecBlock Point, dvec const &Displacement);
 	void ApplyPeriodicBC(Eigen::VectorXd &Points);
 	void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
 	void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA, const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const;
@@ -133,9 +135,17 @@ CBox<Dim> *CPeriodicBox<Dim,NonPeriodicDim>::Create()
 //			according to periodic boundary conditions
 //		It is a templated class with a partial specialization
 //			to handle the common case of full periodic BCs.
-template<int Dim, int NonPeriodicPos>class PeriodicBCs
+template<int Dim, int NonPeriodicPos> class PeriodicBCs
 {
-	static inline void apply(Eigen::VectorXd &Points){
+public:
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::VectorBlock<Eigen::VectorXd,Dim> dvecBlock;
+	static inline void apply_particle(dvecBlock Point)
+	{
+		for(int dd=NonPeriodicDim; dd<Dim; dd++)
+			Point(dd) -= floor(Point(dd));
+	}
+	static inline void apply_vector(Eigen::VectorXd &Points){
 		assert(Points.cols()%Dim==0);
 		int np = Points.cols()/Dim;
 		for(int i=0; i<np; i++)
@@ -145,7 +155,15 @@ template<int Dim, int NonPeriodicPos>class PeriodicBCs
 };
 template<int Dim>class PeriodicBCs<Dim,0>
 {
-	static inline void apply(Eigen::VectorXd &Points){
+public:
+	typedef Eigen::Matrix<dbl,Dim,1> dvec;
+	typedef Eigen::VectorBlock<Eigen::VectorXd,Dim> dvecBlock;
+	static inline void apply_particle(dvecBlock Point)
+	{
+		for(int dd=0; dd<Dim; dd++)
+			Point(dd) -= floor(Point(dd));
+	}
+	static inline void apply_vector(Eigen::VectorXd &Points){
 		for(int i = 0; i< Points.cols() ; i++)
 			Points(i) -= floor(Points(i));
 	};
@@ -156,9 +174,21 @@ template <int Dim, int NonPeriodicDim>
 void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements)
 {
 	Points += Displacements;
-	PeriodicBCs<Dim,NonPeriodicPos>::apply(Points);
+	PeriodicBCs<Dim,NonPeriodicDim>::apply_vector(Points);
 //	ApplyPeriodicBC<Dim,NonPeriodicDim>(Points);
 }
+
+template <int Dim, int NonPeriodicDim>
+//void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(Eigen::VectorBlock<Eigen::VectorXd,Dim> &Point, dvec const &Displacement)
+//void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvec &Point, dvec const &Displacement)
+void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const &Displacement)
+{
+	Point += Displacement;
+	PeriodicBCs<Dim,NonPeriodicDim>::apply_particle(Point);
+}
+
+
+
 
 //These two methods assume:
 //	1. the box has dimensions 1.

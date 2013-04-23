@@ -48,6 +48,27 @@ template <typename T> inline T POW12(T x)
 	return temp*temp;
 }
 
+
+template <typename T>
+inline T max_abs_element(int N, T const *const a)
+{
+	T m = fabs(a[0]);
+	for(int ii=1; ii<N; ii++)   if(fabs(a[ii])>m)   m=fabs(a[ii]);
+	return m;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 inline bool FileExists(std::string strFilename)
 {
 	struct stat stFileInfo;

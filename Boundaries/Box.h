@@ -73,6 +73,7 @@ class CBox
 private:
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+	typedef Eigen::VectorBlock<Eigen::VectorXd,Dim> dvecBlock;
 
 //global variables to read box configurations
 	static std::map<string,CBox<Dim>*> BoxTypes;
@@ -112,13 +113,17 @@ public:
 //functions using the transformation matrix
 	void SetTransformation(dmat &Trans);
 	void GetTransformation(dmat &Trans);
-	void Transform(dvec &Point);
-	void Transform(Eigen::VectorXd &Points);
-	void InverseTransform(dvec &Point);
-	void InverseTransform(Eigen::VectorXd &Points);
+	void Transform(dvec &Point) const;
+	void Transform(Eigen::VectorXd &Points) const;
+	void InverseTransform(dvec &Point) const;
+	void InverseTransform(Eigen::VectorXd &Points) const;
+	void InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement);
+
+	virtual void CalculateVolume() const;
 	
 //functions involving the boundary
 	virtual void MoveParticles(Eigen::VectorXd &Points,Eigen::VectorXd &Displacements)  {};
+	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) {}; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
 	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const {};
 	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const {};
 
@@ -284,31 +289,42 @@ void CBox<Dim>::GetTransformation(dmat &Trans)
 }
 
 template <int Dim>
-void CBox<Dim>::Transform(dvec &Point)
+void CBox<Dim>::Transform(dvec &Point) const
 {
 	Point = Transformation * Point;	
 }
 
 template <int Dim>
-void CBox<Dim>::Transform(Eigen::VectorXd &Points)
+void CBox<Dim>::Transform(Eigen::VectorXd &Points) const
 {
 	for(int i = 0 ; i<Points.rows()/Dim ; i++)
 		Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransform(dvec &Point)
+void CBox<Dim>::InverseTransform(dvec &Point) const
 {
 	Point = Inverse_Transformation * Point;
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points)
+void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
 {
 	for(int i = 0 ; i<Points.rows()/Dim ; i++)
 		Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
 }
 
+template <int Dim>
+void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement)
+{
+	dvec Displacement;
+	int np = Points.cols()/Dim;
+	for(int i=0; i<np; ++i)
+	{
+		Displacement = Inverse_Transformation * t_Displacement.segment<Dim>(Dim*i);
+		MoveParticle(Points.segment<Dim>(Dim*i), Displacement);
+	}
+};
 
 }
 

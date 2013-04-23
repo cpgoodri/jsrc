@@ -77,7 +77,15 @@ public:
 //Dynamical Matrix Stuff (all done in mass-normalized coordinates)
 //computes at q = 0
     virtual void ComputeDynamicalMatrix(Eigen::MatrixXd &tar) = 0;
-    
+
+//Needed for minimization routines
+	virtual void Evaluate(Eigen::VectorXd &grad, dbl &fx) = 0;
+	virtual bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol) = 0;
+	virtual void Move(Eigen::VectorXd const &step) = 0;
+	virtual void ReportHeader()
+	{
+		printf("         ii                       Energy            norm        max_grad \n");
+	};
    
 };
 

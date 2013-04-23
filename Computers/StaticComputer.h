@@ -100,6 +100,10 @@ public:
 //computes at q = 0
     void ComputeDynamicalMatrix(Eigen::MatrixXd &tar);
     
+//Needed for minimization routines
+	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
+	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
+	void Move(Eigen::VectorXd const &step);
     
 };
 
@@ -165,6 +169,36 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 	bonds.Volume = 0.;
 }
 
+//Needed for minimization routines
+template <int Dim>
+void CStaticComputer<Dim>::Evaluate(Eigen::VectorXd &grad, dbl &fx) 
+{
+	CBondList<Dim> bonds;
+	ComputeBondList(bonds);
+	fx = bonds.ComputeGradient(grad);
+};
+
+template <int Dim>
+bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol) 
+{
+	dbl gradNorm = grad.norm();
+	dbl max_grad = max_abs_element(grad.size(), grad.data());
+	bool converged = (max_grad < tol)?true:false;
+	if(converged){ printf("converged\n"); fflush(stdout);}
+	if(iteration%1000==0 || converged)
+	{
+		printf("% 11i   %22.20e   % e   % e\n", iteration, fx, gradNorm, max_grad);
+		fflush(stdout);
+	}
+	return converged;
+};
+
+template <int Dim>
+void CStaticComputer<Dim>::Move(Eigen::VectorXd const &step) 
+{
+	State.MoveParticles(step);
+};
+    
 //Compute the energy of the system
 template <int Dim>
 dbl CStaticComputer<Dim>::ComputeEnergy()

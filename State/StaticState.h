@@ -97,7 +97,7 @@ public:
 	CStaticState<Dim> &operator=(const CStaticState<Dim> &copy);
 
 //Functions to construct systems 
-	void RandomizePositions();
+	void RandomizePositions(long seed = 1);
 	void RandomizePositions(MTRand *random);
 	void Read(const NcFile &File,int Record);
 	
@@ -128,7 +128,8 @@ public:
 	CBox<Dim> *GetBox();	
 	CPotential *GetPotential();
 	
-	int GetParticleNumber();
+	int GetParticleNumber() const;
+	void PrintParticles() const;
 };
 
 
@@ -232,9 +233,9 @@ void CStaticState<Dim>::RandomizePositions(MTRand *random)
 }
 
 template<int Dim>
-void CStaticState<Dim>::RandomizePositions()
+void CStaticState<Dim>::RandomizePositions(long seed)
 {
-	MTRand *random = new MTRand();
+	MTRand *random = new MTRand(seed);
 	RandomizePositions(random);
 	delete random;
 }
@@ -383,8 +384,9 @@ void CStaticState<Dim>::MoveParticles(const Eigen::VectorXd &t_Displacement)
 	if(t_Displacement.rows()!=Dim*N)
 		throw(CException("CStaticState<Dim>::MoveParticles","Displacement vector has an inconsistent size.")); 
 		
-	Box->InverseTransform(t_Displacement);
-	Box->MoveParticles(Positions,t_Displacement);
+//	Box->InverseTransform(t_Displacement);
+//	Box->MoveParticles(Positions,t_Displacement);
+	Box->InverseTransformAndMove(Positions,t_Displacement);
 }
 
 template<int Dim>
@@ -488,9 +490,21 @@ CPotential *CStaticState<Dim>::GetPotential()
 }
 
 template <int Dim>
-int CStaticState<Dim>::GetParticleNumber()
+int CStaticState<Dim>::GetParticleNumber() const
 {
 	return N;
+}
+	
+template <int Dim>
+void CStaticState<Dim>::PrintParticles() const
+{
+	for(int i=0; i<N; ++i)
+	{
+		printf("sphere:% 5i   Position: ", i); 
+		for(int dd=0; dd<Dim; dd++) printf("% 16.14f  ", Positions[Dim*i+dd]);
+		printf("  Radius: %16.14f", Radii[i]);
+		printf("\n");
+	}
 }
 
 }

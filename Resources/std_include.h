@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <iterator>
 #include <assert.h>
 #include <math.h>
 #include <algorithm>

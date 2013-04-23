@@ -5,6 +5,8 @@
 #include "Resources/Exception.h"
 #include "Computers/StaticComputer.h"
 using namespace std;
+using namespace LiuJamming;
+#define DIM 2
 
 double GetScale(int N,double phi)
 {
@@ -45,7 +47,7 @@ void LoadCarlSystem(NcFile &file,int Record,LiuJamming::CStaticState<2> &sys)
 
 }
 
-int main()
+int SamTest()
 {
 	LiuJamming::RegisterPotentials();
 	LiuJamming::RegisterBoxes<2>();
@@ -74,3 +76,59 @@ int main()
 	
 	return 0;
 }
+
+void test1()
+{
+	RegisterPotentials();
+	RegisterBoxes<DIM>();
+
+	int N=32;
+	long seed = 123;
+	CStaticState<DIM> System(N);
+	System.RandomizePositions();
+	System.PrintParticles();
+
+	LiuJamming::CStaticComputer<2> Computer(System);
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+int main()
+{
+	test1();
+	//SamTest();
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
