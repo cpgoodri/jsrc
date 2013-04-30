@@ -83,6 +83,10 @@ public:
 	const CStaticState<Dim> &GetState() const;
 	void SetState(CStaticState<Dim> & State);
 
+//Get generic info from State
+	dbl GetVolume() const;
+	int GetNdof() const;
+
 //Compute the bond list
 	void ComputeBondList(CBondList<Dim> &bonds);
 
@@ -140,6 +144,18 @@ void CStaticComputer<Dim>::SetState(CStaticState<Dim> & _State)
 	Grid.SetState(&State);
 }
 	
+template <int Dim>
+dbl CStaticComputer<Dim>::GetVolume() const
+{
+	return State.GetVolume();
+}
+
+template <int Dim>
+int CStaticComputer<Dim>::GetNdof() const
+{
+	return State.GetParticleNumber()*Dim;
+}
+	
 //Compute the bond list
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
@@ -155,7 +171,7 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
-				sigma = State.GetRadius(i) + State.GetRadius(*it);
+				sigma = State.GetRadius(i) + State.GetRadius((*it));
 				rlen2 = Displacement.squaredNorm();
 				if(rlen2 < sigma*sigma)
 				{

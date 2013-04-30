@@ -86,14 +86,17 @@ public:
 			CellList = cell_list;
 			CurrentParticle = CellList[(*CurrentCell)];
 		}
-	
+
 		iterator &operator ++() {
 			if(CurrentParticle!=-1){
+				//cout << "Incrementing iterator; current particle is " << CurrentParticle << endl;
 				CurrentParticle = OccupancyList[CurrentParticle];
-				if(CurrentParticle==-1&&CurrentCell!=End)
+				while(CurrentParticle==-1&&CurrentCell!=End)
 				{
 					CurrentCell++;
-					CurrentParticle = CellList[(*CurrentCell)];
+					//cout << "Incrementing cell iterator; current cell is " << (*CurrentCell) << endl;
+					if(CurrentCell!=End)
+						CurrentParticle = CellList[(*CurrentCell)];
 				}
 			}
 			return (*this);
@@ -138,8 +141,9 @@ private:
 	//The list of connections between cells.
 	list<int> *DualList;
 	
-	//A boolean to indicate whether we have to reallocate the grid.
-	bool Reallocate;
+	//Flags
+	bool Reallocate;				//A boolean to indicate whether we have to reallocate the grid.
+	bool DualListUpdateNecessary;	//A boolean to indicate whether the DualList might have changed.
 	
 public:
 //Constructor and copy operators
@@ -153,6 +157,7 @@ public:
 //Functions to construct the grid
 	void Allocate();
 	void Construct();
+	void UpdateDualList();
 
 //Functions to access the grid
  	void CellToCoordinates(int i, dvec &coordinates);
@@ -161,7 +166,6 @@ public:
 	
 //Function to compute the grid cell size ; 
 	dvec ComputeCellSize();
-	
 
 };
 
@@ -183,6 +187,7 @@ CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
+	tiling = SQUARE_TILING;
 }
 
 template <int Dim>
@@ -194,6 +199,7 @@ CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
+	tiling = copy.tiling;
 }
 
 //Possible memory leak!
@@ -207,6 +213,7 @@ const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
+	tiling = copy.tiling;
 	return *this;
 }
 
@@ -244,51 +251,52 @@ void CGrid<Dim>::Allocate()
 		CellList[i] = -1;
 	
 	DualList = new list<int>[product];
+
+	Reallocate = false;
 }
 
 template <int Dim>
 void CGrid<Dim>::Construct()
 {
-	//reset the lists
-	for(int i = 0 ; i<N ; i++)
-		OccupancyList[i] = -1;
+	//Reallocate if needed
+	if(Reallocate)
+		Allocate();
 
+	//This will be taken care of later
+//	for(int i = 0 ; i<N ; i++)
+//		OccupancyList[i] = -1;
+
+	//reset CellList
 	for(int i = 0 ; i< TotalCells ;i++)
 	{
 		CellList[i] = -1;
-		DualList[i].erase(DualList[i].begin(),DualList[i].end());
+		//DualList[i].erase(DualList[i].begin(),DualList[i].end());
 	}
 	
 
 	//compute the transformed positions of the particles.
-	Eigen::VectorXd Positions;
-	State->GetPositionsVirtual(Positions);
+//	Eigen::VectorXd Positions;
+//	State->GetPositionsVirtual(Positions);
 	
 	//First put the particles in the cells.
+	dvec PosTemp;
+	int Cell_Index;
 	for(int i = 0 ; i<N ; i++)
 	{
-		//Calculate the index of the cell that we should be in
-		int Cell_Index = 0;
-		int Prod = 1;
-		for(int j = 0 ; j<Dim ; j++)
-		{
-			Cell_Index += (int)(Prod*floor(Positions(Dim*i+j)/CellSize(j)));
-			Prod*=N_Cells[j];
-		}
+		//Calculate the cell that the particle is in.
+		//We should be able to do this without copying the particle positions
+		State->GetParticlePositionVirtual(PosTemp, i);
+		Cell_Index = CoordinatesToCell(PosTemp);
 		
 		//Add the particle to that cell
-		if(CellList[Cell_Index]==-1)
-		{
-			CellList[Cell_Index] = i; 
-		}else{
-			int curr = CellList[Cell_Index];
-			while(OccupancyList[curr]!=-1)
-				curr = OccupancyList[curr];
-			OccupancyList[curr] = i;
-		}
+		OccupancyList[i] = CellList[Cell_Index];
+		CellList[Cell_Index] = i;
 	}
 
 	//Now construct the dual list
+	if(DualListUpdateNecessary)
+		UpdateDualList();
+	/*
 	//go through each pair of cells and find their coordinates
 	dvec Displacement;
 	for(int i = 0 ; i < TotalCells ; i++)
@@ -316,11 +324,56 @@ void CGrid<Dim>::Construct()
 				if(j!=i)
 					DualList[j].push_back(i);
 			}
-			
 		}
+	}
+	*/
+}
 
+template<int Dim>
+void CGrid<Dim>::UpdateDualList()
+{
+	//reset the lists
+	for(int i = 0 ; i< TotalCells ;i++)
+	{
+		DualList[i].erase(DualList[i].begin(),DualList[i].end());
 	}
 
+	//check that there are enough cells
+	std::vector<int> PeriodicDims;
+	State->GetBox()->GetPeriodicDimensions(PeriodicDims);
+	for(typename std::vector<int>::iterator it=PeriodicDims.begin(); it!=PeriodicDims.end(); ++it)
+		assert(N_Cells[(*it)] >= 3); //this makes sure that you can never touch multiple images of the same particle
+
+	//go through each pair of cells and find their coordinates
+	dvec Displacement;
+	for(int i = 0 ; i < TotalCells ; i++)
+	{
+		dvec CoordinateI;
+		CellToCoordinates(i,CoordinateI);
+		for(int j = i ; j < TotalCells ; j++)
+		{
+			dvec CoordinateJ;
+			CellToCoordinates(j,CoordinateJ);
+			
+			State->GetBox()->MinimumDisplacement(CoordinateI,CoordinateJ,Displacement);
+			
+			//go through the dimensions and if any dimension is closer than CellSize+\epsilon apart
+			//add the cells to each others dual
+			bool add = true;
+			for(int k = 0 ; k < Dim ; k++)
+				if(abs(Displacement(k))>CellSize(k)+CellSize(k)/100.0)	
+					add = false;
+	
+			if(add)
+			{
+				//cout << "Displacement = " << max_displacement << " : CellSize = " << CellSize(0) << endl;
+				DualList[i].push_back(j);
+				if(j!=i)
+					DualList[j].push_back(i);
+			}
+		}
+	}
+	DualListUpdateNecessary = false;
 }
 
 //Functions to access the grid
@@ -356,6 +409,41 @@ int CGrid<Dim>::CoordinatesToCell(const dvec &coordinates)
 	return Cell_Index;
 }
 
+/*
+template <int Dim>
+void CGrid<Dim>::CellIndexToCellCoordinates(int i, ivec &Coordinate)
+{
+	int Prod = 1;
+	int LProd = 1;
+	int Sub = 0;
+	for(int k = 0 ; k < Dim ; k++)
+	{
+		Prod*=N_Cells[k];
+		Coordinate(k) = (i%Prod) - Sub;
+		Sub+=Coordinate(k);
+		Coordinate(k)/=LProd;
+		LProd*=N_Cells[k];
+	}
+}
+
+template <int Dim>
+int  CGrid<Dim>::CellCoordinatesToCellIndex(const ivec &Coordinate)
+{
+	int Cell_Index = 0;
+	int Prod = 1;
+//	int Coord_temp;
+	for(int j=0; j<Dim; j++)
+	{
+//		Coord_temp = Coordinate[j];
+//		if(Coord_temp < 0) Coord_temp += N_cells[j];
+//		if(Coord_temp >= N_cells[j]) Coord_temp -= N_cells[j];
+		Cell_Index += Prod*Coordinate[j];
+		Prod *= N_cells[j];
+	}
+	return Cell_Index;
+}
+*/
+
 template <int Dim>
 typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 {
@@ -366,8 +454,22 @@ typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 	return ret;
 }
 
+
 template <int Dim>
-Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
+dvec CGrid<Dim>::ComputeCellSize()
+{
+	dvec MaxDistance = State->GetMaxDistance();
+
+
+}
+
+//!!!!!!!!!! I THINK THIS METHOD IS BUGGY
+//
+//State.Radii is in REAL units, while State.Positions is in boxed coordinates.
+//There should be a method in CStaticState that returns the maximum possible distance in BOXED coordinates that 
+//		neighboring particles could be.
+template <int Dim>
+dvec CGrid<Dim>::ComputeCellSize()
 {
 	dbl MaximumRadius = 0.0;
 	Eigen::VectorXd Rads;

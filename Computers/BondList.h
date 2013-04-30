@@ -35,6 +35,8 @@ public:
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const; //Returns the energy
 //	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const;  //hess is NOT mass-normalized
 //	void ComputeHessian_BZ(Eigen::SparseMatrix< std::complex<dbl> > &hess, dvec k) const;  //hess is NOT mass-normalized
+
+	void PrintBonds() const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +128,12 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 
 
 
+template<int Dim>
+void CBondList<Dim>::PrintBonds() const
+{
+	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+		b->print();
+}
 
 
 

@@ -59,7 +59,7 @@ CBond<Dim> &CBond<Dim>::operator=(const CBond<Dim> &src)
 template<int Dim>
 void CBond<Dim>::print() const
 {
-	printf("CBond<%i> between %5i and %5i: r = ", Dim, i, j);
+	printf("bond between %5i and %5i: r = ", i, j);
 	for(int dd=0; dd<Dim; ++dd)
 		printf("% e ", r[dd]);
 	printf("rlen =% e, sigma =% e, E =% e, g =% e, k =% e\n", rlen, sigma, E, g, k);

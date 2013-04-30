@@ -76,7 +76,7 @@ public:
 	void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const;
 	
 //functions to get other properties of the potential
-	dbl ComputeSupport(dbl r) const;
+	dbl ComputeSupport() const;
 
 };
 
@@ -166,9 +166,9 @@ void CHarmonicPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, db
 	k = epsilon/POW2(r);
 }
 
-dbl CHarmonicPotential::ComputeSupport(dbl r) const
+dbl CHarmonicPotential::ComputeSupport() const
 {
-	return r;
+	return 1.;
 }
 
 

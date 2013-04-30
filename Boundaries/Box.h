@@ -78,6 +78,11 @@ private:
 //global variables to read box configurations
 	static std::map<string,CBox<Dim>*> BoxTypes;
 
+	//enum{SQUARE, RECTANGULAR, SYMMETRIC_QUADRILATERAL};
+	enum{RECTANGULAR, SYMMETRIC_QUADRILATERAL};
+
+	int BoxSymmetry;
+
 //Functions to check that the correct dimensions, variables, and attributes are present
 //in a netCDF file.
 	static bool CheckNetCDF(const NcFile &file);
@@ -119,7 +124,12 @@ public:
 	void InverseTransform(Eigen::VectorXd &Points) const;
 	void InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement);
 
-	virtual void CalculateVolume() const;
+//set and get the volume
+	virtual void SetVolume(dbl V);
+	virtual dbl CalculateVolume() const;
+
+//get a list of the periodic dimensions
+	virtual void GetPeriodicDimensions(std::vector<int> &) const = 0;
 	
 //functions involving the boundary
 	virtual void MoveParticles(Eigen::VectorXd &Points,Eigen::VectorXd &Displacements)  {};
@@ -213,6 +223,7 @@ CBox<Dim>::CBox()
 {
 	Transformation = dmat::Identity();
 	Inverse_Transformation = dmat::Identity();
+	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
 }
 
 template <int Dim>
@@ -220,6 +231,7 @@ CBox<Dim>::CBox(const dmat Trans)
 {
 	Transformation = Trans;
 	Inverse_Transformation = Transformation.inverse();
+	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
 }
 	
 template<int Dim>
@@ -227,12 +239,14 @@ CBox<Dim>::CBox(dbl sx, dbl sy, dbl sz)
 {
 	Transformation = dmat::Identity();
 	Inverse_Transformation = Transformation.inverse();
+	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
 }
 
 template <int Dim>
 CBox<Dim>::CBox(const CBox &box) : Transformation(box.Transformation) 
 {
 	Inverse_Transformation = Transformation.inverse();
+	BoxSymmetry = box.BoxSymmetry;
 }
 
 template <int Dim> 
@@ -240,6 +254,7 @@ const CBox<Dim> &CBox<Dim>::operator=(const CBox<Dim> &box)
 {
 	Transformation = box.GetTransformation();
 	Inverse_Transformation = Transformation.inverse();
+	BoxSymmetry = box.BoxSymmetry;
 }
 
 //functions to write box configurations
@@ -291,27 +306,61 @@ void CBox<Dim>::GetTransformation(dmat &Trans)
 template <int Dim>
 void CBox<Dim>::Transform(dvec &Point) const
 {
-	Point = Transformation * Point;	
+	switch(BoxSymmetry)
+	{
+		case RECTANGULAR: 
+			Point = Transformation.diagonal().cwiseProduct(Point); 
+			break;
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			Point = Transformation * Point;	
+	}
 }
 
 template <int Dim>
 void CBox<Dim>::Transform(Eigen::VectorXd &Points) const
 {
-	for(int i = 0 ; i<Points.rows()/Dim ; i++)
-		Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
+	switch(BoxSymmetry)
+	{
+		case RECTANGULAR: 
+			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+				Points.segment<Dim>(Dim*i) = Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
+			break;
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+				Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
+	}
 }
 
 template <int Dim>
 void CBox<Dim>::InverseTransform(dvec &Point) const
 {
-	Point = Inverse_Transformation * Point;
+	switch(BoxSymmetry)
+	{
+		case RECTANGULAR: 
+			Point = Inverse_Transformation.diagonal().cwiseProduct(Point); 
+			break;
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			Point = Inverse_Transformation * Point;
+	}
 }
 
 template <int Dim>
 void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
 {
-	for(int i = 0 ; i<Points.rows()/Dim ; i++)
-		Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
+	switch(BoxSymmetry)
+	{
+		case RECTANGULAR: 
+			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+				Points.segment<Dim>(Dim*i) = Inverse_Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
+			break;
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+				Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
+	}
 }
 
 template <int Dim>
@@ -319,12 +368,49 @@ void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::Ve
 {
 	dvec Displacement;
 	int np = Points.cols()/Dim;
-	for(int i=0; i<np; ++i)
+	switch(BoxSymmetry)
 	{
-		Displacement = Inverse_Transformation * t_Displacement.segment<Dim>(Dim*i);
-		MoveParticle(Points.segment<Dim>(Dim*i), Displacement);
+		case RECTANGULAR: 
+			for(int i=0; i<np; ++i)
+			{
+				Displacement = Inverse_Transformation.diagonal().cwiseProduct(t_Displacement.segment<Dim>(Dim*i));
+				MoveParticle(Points.segment<Dim>(Dim*i), Displacement);
+			}
+			break;
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			for(int i=0; i<np; ++i)
+			{
+				Displacement = Inverse_Transformation * t_Displacement.segment<Dim>(Dim*i);
+				MoveParticle(Points.segment<Dim>(Dim*i), Displacement);
+			}
 	}
 };
+
+
+
+template <int Dim>
+void CBox<Dim>::SetVolume(dbl V)
+{
+	dbl Vold = CalculateVolume();
+	dbl Lrescale = std::pow(V/Vold,1./((dbl)Dim));
+	Transformation *= Lrescale;
+	Inverse_Transformation = Transformation.inverse(); //Could just divide Inverse_Transformation by Lrescale, but this is probably more stable.
+}
+
+
+template <int Dim>
+dbl CBox<Dim>::CalculateVolume() const
+{
+	switch(BoxSymmetry)
+	{
+		case RECTANGULAR: 
+			return Transformation.diagonal().prod();
+		case SYMMETRIC_QUADRILATERAL:
+		default:
+			return fabs(Transformation.determinant());
+	}
+}
 
 }
 

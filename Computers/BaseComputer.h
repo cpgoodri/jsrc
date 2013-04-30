@@ -64,6 +64,10 @@ template <int Dim>
 class CBaseComputer
 {
 public:
+//Get generic info
+	virtual dbl GetVolume() const = 0;
+	virtual int GetNdof() const = 0;
+
 //Compute the energy of the system
     virtual double ComputeEnergy() = 0;
     

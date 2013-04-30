@@ -101,7 +101,9 @@ public:
 	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;
 	
 //functions to get other properties of the potential
-	virtual dbl ComputeSupport(dbl r) const = 0;
+
+	//return rmax: the maximum distance between two particles of unit diameter such that they interact
+	virtual dbl ComputeSupport() const = 0;
 	
 };
 

@@ -5,17 +5,32 @@
 #include "../Computers/BaseComputer.h"
 #include "minimizerFIRE.h"
 
+namespace LiuJamming
+{
+
 template<int Dim>
 class CSimpleMinimizer
 {
 private:
+	enum{NONE=0,FIRE, LBFGS, CG_PR, CG_FR};
 	CBaseComputer<Dim> *pComputer;
 	int N_dof;
 
 public:
-	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, _N_dof)
-		: pComputer(&TargetComputer), N_dof(_N_dof)
-	{};
+	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize)
+		: pComputer(&TargetComputer)
+	{
+		N_dof = pComputer->GetNdof();
+		switch(minize)
+			minimizeFIRE();
+	};
+
+	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, dbl tol=1e-12, dbl delta_t_start=0.1, int max_iterations=-1)
+		: pComputer(&TargetComputer)
+	{
+		N_dof = pComputer->GetNdof();
+		minimizeFIRE(
+	};
 
 	void minimizeFIRE(dbl tol, dbl delta_t_start, int max_iterations = -1);
 };
@@ -37,5 +52,8 @@ void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, dbl delta_t_start, int max_ite
 
 	mm.minimize(tol);
 };
+
+
+}
 
 #endif //MINIMIZER

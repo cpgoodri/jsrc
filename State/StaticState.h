@@ -115,6 +115,7 @@ public:
 	void MoveParticlesVirtual(const Eigen::VectorXd &t_Displacement);
 	void SetBox(CBox<Dim> *t_Box);
 	void SetPotential(CPotential *t_Potential);
+	void SetPackingFraction(dbl phi);
 
 //Functions to get properties of the system
 	void GetRadii(Eigen::VectorXd &);	
@@ -127,9 +128,17 @@ public:
 	void GetDisplacementVirtual(int i, int j, dvec &displacement);
 	CBox<Dim> *GetBox();	
 	CPotential *GetPotential();
-	
-	int GetParticleNumber() const;
+	dbl  GetSphereVolume() const;
+	dbl  GetPackingFraction() const;
+	dbl  GetVolume() const;
+	int  GetParticleNumber() const;
+
+	dvec GetMaxDistance() const;
+
 	void PrintParticles() const;
+
+//	//Allow the class CGrid<Dim> to access private information.
+//	friend class CGrid<Dim>;
 };
 
 
@@ -168,6 +177,8 @@ void CStaticState<Dim>::PopulateNetCDF(NcFile &file)
 }
 
 //Constructors/Destructors and copy operators
+//
+//!!!POTENTIAL MEMORY LEAK?
 template <int Dim>
 CStaticState<Dim>::CStaticState()
 {
@@ -184,7 +195,8 @@ CStaticState<Dim>::CStaticState(int _N)
 	Potential = new CHarmonicPotential();
 	
 	Positions = Eigen::ArrayXd::Zero(Dim*N);
-	Radii = Eigen::ArrayXd::Constant(N,1.0);
+	Radii = Eigen::ArrayXd::Constant(N,1.);
+//	Radii = Eigen::ArrayXd::Constant(N,0.5);
 }
 	
 template<int Dim>
@@ -192,7 +204,7 @@ CStaticState<Dim>::CStaticState(const CStaticState &copy)
 {
 	N = copy.GetParticleNumber();
 	
-	Box = copy.GetBox()->copy();
+	Box = copy.GetBox()->copy(); //????????
 	Potential = copy.GetPotential()->copy();
 	
 	Positions = copy.GetPositions();
@@ -410,6 +422,15 @@ void CStaticState<Dim>::SetPotential(CPotential *t_Potential)
 	Potential = t_Potential;
 }
 
+template <int Dim>
+void CStaticState<Dim>::SetPackingFraction(dbl phi)
+{
+	Box->SetVolume(GetSphereVolume()/phi);
+	assert( fabs(GetPackingFraction()-phi) < 1e-10 );
+}
+
+
+
 //Functions to get properties of the system
 template <int Dim>
 void CStaticState<Dim>::GetRadii(Eigen::VectorXd &t_Radii)
@@ -490,18 +511,51 @@ CPotential *CStaticState<Dim>::GetPotential()
 }
 
 template <int Dim>
+dbl CStaticState<Dim>::GetSphereVolume() const
+{
+	dbl SphereVolume = 0.;
+	for(int i=0; i<Radii.size(); ++i)
+		SphereVolume += std::pow(Radii[i],Dim);
+	SphereVolume *= nSphere_Vn(Dim);
+	return SphereVolume;
+}
+
+template <int Dim>
+dbl CStaticState<Dim>::GetPackingFraction() const
+{
+	return GetSphereVolume()/GetVolume();
+}
+
+template <int Dim>
+dbl CStaticState<Dim>::GetVolume() const
+{
+	return Box->CalculateVolume();
+}
+	
+template <int Dim>
 int CStaticState<Dim>::GetParticleNumber() const
 {
 	return N;
+}
+
+template <int Dim>
+dvec CStaticState<Dim>::GetMaxDistance() const
+{
+
+	dbl MaxDistance = 2.*Radii.maxCoeff()*Potential->ComputeSupport();
+	dvec = dvec::Constant(MaxDistance);
+
 }
 	
 template <int Dim>
 void CStaticState<Dim>::PrintParticles() const
 {
+	Eigen::VectorXd RealPos = Positions;
+	Box->Transform(RealPos);
 	for(int i=0; i<N; ++i)
 	{
 		printf("sphere:% 5i   Position: ", i); 
-		for(int dd=0; dd<Dim; dd++) printf("% 16.14f  ", Positions[Dim*i+dd]);
+		for(int dd=0; dd<Dim; dd++) printf("% 20.14f  ", RealPos[Dim*i+dd]);
 		printf("  Radius: %16.14f", Radii[i]);
 		printf("\n");
 	}

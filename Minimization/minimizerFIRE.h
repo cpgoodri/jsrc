@@ -3,6 +3,10 @@
 
 #include "../Resources/std_include.h"
 
+namespace LiuJamming
+{
+
+
 template<class T>
 class CMinimizerFIRE
 {
@@ -211,5 +215,6 @@ public:
 
 };
 
+}
 
 #endif //MINIMIZERFIRE

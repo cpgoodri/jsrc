@@ -166,23 +166,23 @@ vector<T> &operator/=(vector<T> &vec,const T &div)
 
 //code to do linear regressions
 struct LinearRegression {
-    double slope;
-    double intercept;
+    dbl slope;
+    dbl intercept;
     
     LinearRegression() : slope(0), intercept(0) {}
-    LinearRegression(double _i, double _s) : slope(_s), intercept(_i) {}
+    LinearRegression(dbl _i, dbl _s) : slope(_s), intercept(_i) {}
 };
 
-LinearRegression LinearFit(vector<double> x_data, vector<double> y_data);
+LinearRegression LinearFit(vector<dbl> x_data, vector<dbl> y_data);
 
 //code to compute factorials as well as absolute values and sgns.
 long int factorial(long int n);
 
-double logfactorial(int n);
+dbl logfactorial(int n);
 
-double logchoose(int n, int k);
+dbl logchoose(int n, int k);
 
-double choose( int n,  int k);
+dbl choose( int n,  int k);
 
 int pow(int n, int e);
 
@@ -198,6 +198,23 @@ T abs(T a)
     return (a>0) ? a : -a;
 }
 
+
+//code to calculate the volume and surface area of an n-dimensional unit sphere
+dbl nSphere_Sn(int n);
+dbl nSphere_Vn(int n)
+{
+	if(n==0) return 1.;
+	return nSphere_Sn(n-1)/((dbl)n);
+}
+dbl nSphere_Sn(int n)
+{
+	if(n==0) return 2.;
+	return 2.*M_PI*nSphere_Vn(n-1);
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////CODE TO APPROXIMATE GAUSSIAN INVERSE CDF////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,11 +222,11 @@ T abs(T a)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // compute log(1+x) without losing precision for small values of x
-double LogOnePlusX(double x);
+dbl LogOnePlusX(dbl x);
 
-double RationalApproximation(double t);
+dbl RationalApproximation(dbl t);
 
-double NormalCDFInverse(double p);
+dbl NormalCDFInverse(dbl p);
 
 vector<string> SplitString(const string &target, const string &token);
 

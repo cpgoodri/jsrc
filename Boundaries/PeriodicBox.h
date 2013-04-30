@@ -59,13 +59,15 @@ public:
 //functions to read box configurations
  	void StringToData(string Data);
  	CBox<Dim> *Create();
+	
+//get a list of the periodic dimensions
+	void GetPeriodicDimensions(std::vector<int> &) const;
  	
 //functions involving the boundary
 	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements);
 	void MoveParticle(dvecBlock Point, dvec const &Displacement);
-	void ApplyPeriodicBC(Eigen::VectorXd &Points);
 	void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
-	void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA, const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const;
+	void MinimumDisplacement(const dvecBlock &PointA, const dvecBlock &PointB, dvec &Displacement) const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -171,17 +173,14 @@ public:
 
 //functions involving the boundary
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements)
+void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements) const
 {
 	Points += Displacements;
 	PeriodicBCs<Dim,NonPeriodicDim>::apply_vector(Points);
-//	ApplyPeriodicBC<Dim,NonPeriodicDim>(Points);
 }
 
 template <int Dim, int NonPeriodicDim>
-//void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(Eigen::VectorBlock<Eigen::VectorXd,Dim> &Point, dvec const &Displacement)
-//void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvec &Point, dvec const &Displacement)
-void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const &Displacement)
+void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const &Displacement) const
 {
 	Point += Displacement;
 	PeriodicBCs<Dim,NonPeriodicDim>::apply_particle(Point);
@@ -205,12 +204,20 @@ void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvec &PointA,co
 }
 
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const
+void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvecBlock &PointA,const dvecBlock &PointB, dvec &Displacement) const
 {
 	Displacement = PointA-PointB;
 	for(int i = NonPeriodicDim ; i < Dim ; i++)
 		if(abs(Displacement(i))>0.5)
 			Displacement(i)-=sgn(Displacement(i));
+}
+
+template <int Dim, int NonPeriodicDim>
+void CPeriodicBox<Dim,NonPeriodicDim>::GetPeriodicDimensions(std::vector<int> &pdims) const
+{
+	pdims.clear();
+	for(int i=NonPeriodicDim; i<Dim; ++i)
+		pdims.push_back(i);
 }
 
 }
