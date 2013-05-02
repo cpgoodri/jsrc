@@ -539,11 +539,11 @@ int CStaticState<Dim>::GetParticleNumber() const
 }
 
 template <int Dim>
-dvec CStaticState<Dim>::GetMaxDistance() const
+Eigen::Matrix<dbl,Dim,1> CStaticState<Dim>::GetMaxDistance() const
 {
 
 	dbl MaxDistance = 2.*Radii.maxCoeff()*Potential->ComputeSupport();
-	dvec = dvec::Constant(MaxDistance);
+	return dvec::Constant(MaxDistance);
 
 }
 	

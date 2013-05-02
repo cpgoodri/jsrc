@@ -187,7 +187,7 @@ CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
-	tiling = SQUARE_TILING;
+//	tiling = SQUARE_TILING;
 }
 
 template <int Dim>
@@ -199,7 +199,7 @@ CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
-	tiling = copy.tiling;
+//	tiling = copy.tiling;
 }
 
 //Possible memory leak!
@@ -213,7 +213,7 @@ const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 		OccupancyList[i] = -1;
 	CellList = NULL;
 	DualList = NULL;
-	tiling = copy.tiling;
+//	tiling = copy.tiling;
 	return *this;
 }
 
@@ -456,20 +456,21 @@ typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 
 
 template <int Dim>
-dvec CGrid<Dim>::ComputeCellSize()
+Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
 {
 	dvec MaxDistance = State->GetMaxDistance();
 
-
+	return MaxDistance;
 }
 
+/*
 //!!!!!!!!!! I THINK THIS METHOD IS BUGGY
 //
 //State.Radii is in REAL units, while State.Positions is in boxed coordinates.
 //There should be a method in CStaticState that returns the maximum possible distance in BOXED coordinates that 
 //		neighboring particles could be.
 template <int Dim>
-dvec CGrid<Dim>::ComputeCellSize()
+Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
 {
 	dbl MaximumRadius = 0.0;
 	Eigen::VectorXd Rads;
@@ -487,6 +488,7 @@ dvec CGrid<Dim>::ComputeCellSize()
 	
 	return ret;
 }
+*/
 
 }
 

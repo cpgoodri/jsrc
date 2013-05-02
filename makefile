@@ -1,6 +1,6 @@
 DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
 
-name=Test_Computer
+name=test
 obj=$(name).o
 
 

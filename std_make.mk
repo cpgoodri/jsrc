@@ -5,6 +5,7 @@ srcDIR = $(DIR)
 srcOBJGQS = \
 Resources/Resources.o \
 Resources/Exception.o \
+Resources/index_map.o
 
 #Compiler
 CPP=icpc
@@ -25,10 +26,12 @@ LinkFLAGS = $(FLAGS)
 INCLUDE = \
 -I/data1/jamming/cpp/arpack++/include \
 -I/usr/global/netcdf-4.1.1-i11/include \
+-I/data1/jcode/local/include/SuiteSparse \
 -I/data1/jcode/local/include
 
 LIBRARY = \
 -L/data1/jamming/lib \
+-L/data1/jcode/local/lib \
 -L/data1/jamming/lib/lib_suitesparse \
 -L/usr/global/netcdf-4.1.1-i11/lib -lnetcdf_c++ \
 -L/usr/global/hdf5-1.8.5-patch1-i11/lib
@@ -37,7 +40,7 @@ SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack
 netCDFLINK = -lnetcdf_c++ -lnetcdf
 hdf5LINK = -lhdf5_hl -lhdf5 -lz
 intelLINK = -lifcore -limf -lm
-LINK = $(SuiteSparseLINK)  -lgfortran -larpack $(netCDFLINK) $(hdf5LINK) $(intelLINK)
+LINK = $(SuiteSparseLINK)  -lgfortran -larpack $(netCDFLINK) $(hdf5LINK) $(intelLINK) $(SuiteSparseLINK)
 
 
 FRULE = $(FF)  $(FFLAGS) $(INCLUDE) -c -o $@ $<

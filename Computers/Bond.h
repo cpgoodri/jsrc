@@ -27,6 +27,8 @@ public:
 
 	CBond<Dim>& operator=(const CBond<Dim> &src);
 
+	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const;
+
 	//Print the bond to the terminal.
 	void print() const;
 };
@@ -54,6 +56,13 @@ CBond<Dim> &CBond<Dim>::operator=(const CBond<Dim> &src)
 		k = src.k;
 	}
 	return *this;
+}
+
+template<int Dim>
+void CBond<Dim>::CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const
+{
+	Fij = -g*(dmat::Identity() - r*(r.transpose())/POW2(rlen))/rlen;
+	Kij = -k*r*(r.transpose())/POW2(rlen);
 }
 
 template<int Dim>

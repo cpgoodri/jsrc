@@ -64,8 +64,8 @@ public:
 	void GetPeriodicDimensions(std::vector<int> &) const;
  	
 //functions involving the boundary
-	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements);
-	void MoveParticle(dvecBlock Point, dvec const &Displacement);
+	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const;
+	void MoveParticle(dvecBlock Point, dvec const &Displacement) const;
 	void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
 	void MinimumDisplacement(const dvecBlock &PointA, const dvecBlock &PointB, dvec &Displacement) const;
 };

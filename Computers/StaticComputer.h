@@ -89,6 +89,7 @@ public:
 
 //Compute the bond list
 	void ComputeBondList(CBondList<Dim> &bonds);
+	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 
 //Compute the energy of the system
     dbl ComputeEnergy();
@@ -98,11 +99,11 @@ public:
     void ComputeForce(Eigen::VectorXd &tar);
     
 //Hessian stuff
-    void ComputeHessian(Eigen::MatrixXd &tar);
+	void ComputeHessian(Eigen::MatrixXd &tar);
 
 //Dynamical Matrix Stuff (all done in mass-normalized coordinates)
 //computes at q = 0
-    void ComputeDynamicalMatrix(Eigen::MatrixXd &tar);
+	void ComputeDynamicalMatrix(Eigen::MatrixXd &tar);
     
 //Needed for minimization routines
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
@@ -182,7 +183,29 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 			}
 		}
 	}
-	bonds.Volume = 0.;
+	bonds.SetVolume(GetVolume());
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
+{
+	dvec Displacement;
+	dbl sigma, rlen, rlen2, E, g, k;
+	for(int i = 0 ; i < State.GetParticleNumber()-1 ; i++)
+		for(int j = i+1 ; j < State.GetParticleNumber() ; j++)
+		{
+			State.GetDisplacement(i,j,Displacement);
+			sigma = State.GetRadius(i) + State.GetRadius(j);
+			rlen2 = Displacement.squaredNorm();
+			if(rlen2 < sigma*sigma)
+			{
+				rlen = sqrt(rlen2);
+				State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
+				bonds.AddBond( CBond<Dim>(i, j, sigma, rlen, E, g, k, Displacement) );
+			}
+		}
+	//bonds.Volume = 0.;
+	bonds.SetVolume(GetVolume());
 }
 
 //Needed for minimization routines
@@ -214,7 +237,11 @@ void CStaticComputer<Dim>::Move(Eigen::VectorXd const &step)
 {
 	State.MoveParticles(step);
 };
-    
+  
+
+
+
+
 //Compute the energy of the system
 template <int Dim>
 dbl CStaticComputer<Dim>::ComputeEnergy()
@@ -395,7 +422,6 @@ void CStaticComputer<Dim>::ComputeDynamicalMatrix(Eigen::MatrixXd &tar)
 		}
 	}
 }
-
     
 
 }

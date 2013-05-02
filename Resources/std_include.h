@@ -15,6 +15,7 @@
 #define SQRT3 1.7320508075688772935274463415058723669428052538103806
 
 typedef double dbl;
+typedef std::complex<dbl> cdbl;
 
 #endif //STD_INCLUDE_H
 
