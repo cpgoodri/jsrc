@@ -1,5 +1,6 @@
-#ifndef HARMONIC_POTENTIAL
+#include "BasePotential.h"
 
+#ifndef HARMONIC_POTENTIAL
 #define HARMONIC_POTENTIAL
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -23,14 +24,6 @@
 //
 /////////////////////////////////////////////////////////////////////////////////
 
-#include "../Resources/std_include.h"
-#include "../Resources/MersenneTwister.h"
-#include "Potential.h"
-#include <map>
-#include <string>
-#include <sstream>
-#include <stdlib.h>
-
 namespace LiuJamming
 {
 
@@ -44,40 +37,48 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+//! Class to implement harmonic interactions.
+
 class CHarmonicPotential : public CPotential
 {	
 private:
-//the interaction strength
-	dbl epsilon;
+	dbl epsilon;	//!<the interaction strength
 
 public:
-//constructors and copy operators
+//! @name Constructors and copy operators
+///@{
 	CHarmonicPotential();
 	CHarmonicPotential(dbl _e);
 	CHarmonicPotential(const CHarmonicPotential &box);
-	
 	const CHarmonicPotential &operator=(const CHarmonicPotential &box);
+///@}
 
-//functions to write potential configurations
-	string DataToString();
-	
-//functions to read potential configurations
+//! @name Functions to read and write potential configurations
+///@{
+	static string GetName();
+	string DataToString() const;
  	void StringToData(string Data);
  	CPotential *Create();
 	
-//functions to compute various derivatives
-	dbl Compute(dbl dr,dbl r) const;
-	dbl ComputeFirstDerivative(dbl dr,dbl r) const;
-	dbl ComputeSecondDerivative(dbl dr,dbl r) const;
-	dbl ComputeThirdDerivative(dbl dr,dbl r) const;
-
-//functions to compute multiple derivatives at a time
-	void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const;
-	void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const;
+///@}
 	
-//functions to get other properties of the potential
+//! @name Functions to compute various derivatives
+///@{ 
+	dbl  Compute(dbl dr,dbl r) const;											//!<Compute the 0th derivative
+	dbl  ComputeFirstDerivative(dbl dr,dbl r) const;							//!<Compute the 1st derivative
+	dbl  ComputeSecondDerivative(dbl dr, dbl r) const;							//!<Compute the 2nd derivative
+	dbl  ComputeThirdDerivative(dbl dr, dbl r) const;							//!<Compute the 3th derivative
+	void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const;				//!<Compute the 0th and 1st derivatives
+	void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const;	//!<Compute the 0th and 1st and 2nd derivatives
+	
+///@}
+
+//! @name Misc.
+///@{
+	//!Get the maximum distance between two particles of unit diameter such that they interact
 	dbl ComputeSupport() const;
 
+///@}
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -110,11 +111,18 @@ const CHarmonicPotential &CHarmonicPotential::operator=(const CHarmonicPotential
 	return *this;
 }
 
+string CHarmonicPotential::GetName()
+{
+	string s = "HarmonicPotential";
+	return s;
+}
+
 //functions to write potential configurations
-string CHarmonicPotential::DataToString()
+string CHarmonicPotential::DataToString() const
 {
 	stringstream ss;
-	ss << "HarmonicPotential:" << epsilon;
+	ss << GetName() << ":" << epsilon;
+	//ss << "HarmonicPotential:" << epsilon;
 	return ss.str();
 }
 	

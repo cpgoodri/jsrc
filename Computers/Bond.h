@@ -3,34 +3,44 @@
 
 #include "../Resources/std_include.h"
 
+
+//! Class to store a single bond.
+
 template<int Dim>
 class CBond
 {
 	typedef Eigen::Matrix<dbl, Dim, 1> dvec;
 	typedef Eigen::Matrix<dbl, Dim, Dim> dmat;
 public:
-	int i,j;
-	dvec r;
-	dbl sigma;
-	dbl rlen;
-	dbl E, g, k;
+	int	i;		//!<Index i.
+	int j;		//!<Index j.
+	dvec r;		//!<A dvec pointing from i to j.
+	dbl sigma;	//!<Relevant length scale.
+	dbl rlen;	//!<Distance between i and j.
+	dbl E;		//!<Potential energy, V, stored in the bond.
+	dbl g;		//!<First derivative of V w.r.t. rlen.
+	dbl k;		//!<Second derivative of V w.r.t rlen.
 
+
+//! @name Constructors and Operators
+///@{
 	CBond(int _i=0, int _j=0)
 		:i(_i), j(_j), sigma(0.), rlen(0.), E(0.), g(0.), k(0.)
 		{r = dvec::Zero(); };
-
 	CBond(int _i, int _j, dbl _sigma, dbl _rlen, dbl _E, dbl _g, dbl _k, const dvec &_r)
 		:i(_i), j(_j), sigma(_sigma), rlen(_rlen), E(_E), g(_g), k(_k)
 		{r = _r; };
-
 	CBond(const CBond &src) { *this = src; };
-
 	CBond<Dim>& operator=(const CBond<Dim> &src);
 
-	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const;
+///@}
 
-	//Print the bond to the terminal.
-	void print() const;
+//! @name Misc.
+///@{
+	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const; //!<Calculate blocks for the hessian.
+	void print() const;	//!<Print the bond to the terminal.
+
+///@}
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +68,10 @@ CBond<Dim> &CBond<Dim>::operator=(const CBond<Dim> &src)
 	return *this;
 }
 
+/**
+ *	@param[out] Fij The stressed component of the matrix block.
+ *	@param[out] Kij The unstressed component of the matrix block.
+ */
 template<int Dim>
 void CBond<Dim>::CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const
 {

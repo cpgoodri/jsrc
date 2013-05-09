@@ -137,7 +137,7 @@ CBox<Dim> *CPeriodicBox<Dim,NonPeriodicDim>::Create()
 //			according to periodic boundary conditions
 //		It is a templated class with a partial specialization
 //			to handle the common case of full periodic BCs.
-template<int Dim, int NonPeriodicPos> class PeriodicBCs
+template<int Dim, int NonPeriodicDim> class PeriodicBCs
 {
 public:
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;

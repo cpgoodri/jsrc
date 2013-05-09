@@ -7,7 +7,16 @@
 #include "Bond.h"
 #include "Neighbors.h"
 
+namespace LiuJamming
+{
 
+//! Class to store a list of bonds.
+
+/*!
+ * This class stores a list of bonds and provides numerous functions for making static calculation,
+ * such as computing the energy, gradient and the hessian matrix. It also provides functions for
+ * removing rattlers.
+ */
 template<int Dim>
 class CBondList
 {
@@ -16,53 +25,66 @@ class CBondList
 	typedef CBond<Dim> BOND;
 	typedef Eigen::Triplet<cdbl> TRIP;
 
-	int N;
-	dbl Volume;
-	std::vector<BOND> list;
+//! @name Storage Variables
+///@{
+	int N;						//!<Number of possible nodes.
+	dbl Volume;					//!<Volume containing the bonds.
+	vector<BOND> list;		//!<A list of the bonds.
+
+///@}
 
 public:
-	CBondList(int _N=0, dbl V=0.)
-		:N(_N), Volume(V) {};
+//! @name Constructors and Operators
+///@{
+	CBondList(int _N=0, dbl V=0.);							//!<Construct a CBondsList.
+	CBondList(const CBondList &src);						//!<Copy constructor.
+	CBondList<Dim>& operator=(const CBondList<Dim> &src);	//!<Overloaded equals operator.
 
-	CBondList(const CBondList &src) { (*this) = src; };
-	CBondList<Dim>& operator=(const CBondList<Dim> &src);
+///@}
 
-	void AddBond(const BOND &b);
-	void SetVolume(dbl _V);
+//! @name Get and Set Methods
+///@{
+	void AddBond(const BOND &b);	//!<Add a bond to the list
+	void SetVolume(dbl _V);			//!<Set the volume.
+	void SetN(int _N);				//!<Set the number of nodes.
 
-	int GetN() const;
-	int GetNBonds() const;
-	dbl GetVolume() const;
+	int GetN() const;				//!<Get the number of nodes.
+	int GetNBonds() const;			//!<Get the number of bonds.
+	dbl GetVolume() const;			//!<Get the volume.
 
-	//Get a list of the neighbors of each particle
-	void CalculateNeighbors(std::vector< std::vector<int> > &nbrs) const;
+///@}
 
-	//Remove Bonds/Rattlers
-	void RemoveBonds(std::vector<bool> const &BondsToRemove);
-	void UpdateBondIndices(index_map const &map);
-	int  IdentifyRattlers(std::vector< std::vector<int> > &nbrs, std::vector<bool> &rattlers, std::vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const;
-	int  IdentifyRattlers(std::vector< std::vector<int> > &nbrs, std::vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const;
-	void RemoveRattlers(int c=Dim+1, bool Verbose=false);
-	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false);
+//! @name Bond Manipulation
+///@{
+	void CalculateNeighbors(vector< vector<int> > &nbrs) const;	//!<Get a list of the neighbors of each particle
+	void RemoveBonds(vector<bool> const &BondsToRemove); //!<Remove bonds from the list
+	void UpdateBondIndices(index_map const &map);	//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
+	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const; //!<Identify nodes that are not fixed and are involved in less than c bonds.
+	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const; //!<Identify rattlers assuming no fixed nodes.
+	void RemoveRattlers(int c=Dim+1, bool Verbose=false); //!<Remove rattlers, i.e. nodes with less than c bonds
+	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false); //!< Remove rattlers, and return the corresponding index_map.
 
-	//Compute data
-	dbl  ComputeEnergy() const;
-	dbl  ComputePressure() const;
-	void ComputeStressTensor(dmat &stress) const;
+///@}
+
+//! @name Computations
+///@{
+	dbl  ComputeEnergy() const;							//!<Compute the energy.
+	dbl  ComputePressure() const;						//!<Compute the pressure.
+	void ComputeStressTensor(dmat &stress) const;		//!<Compute the Dim by Dim stress tensor.
 //	void ComputeData(CSimpleData &data) const;
+	dbl  ComputeGradient(Eigen::VectorXd &grad) const;	//!<Compute the Dim*N dimensional energy gradient (i.e. -Fnet), and return the energy.
+	void ComputeHessianElements(vector<TRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;	//!<Compute the elements of the hessian as a list.
+	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;					//!<Compute the hessian, note: the hessian is NOT mass-normalized.
+	void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;		//!<Compute the hessian at non-zero wavevector k, note: the hessian is NOT mass-normalized.
 
-	//Compute gradient
-	dbl  ComputeGradient(Eigen::VectorXd &grad) const; //Returns the energy
+///@}
 
-	//Compute the hessian and dynamical matrix
-private:
-	void ComputeHessianElements(std::vector<TRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;
-public:
-	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;  //hess is NOT mass-normalized
-	void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;  //hess is NOT mass-normalized
+//! @name Misc.
+///@{
+	bool CheckConsistency() const;	//!<Check that the i and j index of every bond is less than N and greater than or equal to 0.
+	void PrintBonds() const;		//!<Print the bond list to stdout.
 
-	bool CheckConsistency() const;
-	void PrintBonds() const;
+///@}
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -73,6 +95,22 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+		
+
+template<int Dim>
+CBondList<Dim>::CBondList<Dim>(int _N, dbl V)
+	:N(_N), Volume(V) 
+{};
+
+template<int Dim>
+CBondList<Dim>::CBondList<Dim>(const CBondList &src) 
+{
+	(*this) = src; 
+}
+
+/**
+ *	WARNING: this method is not yet implemented!
+ */
 template<int Dim>
 CBondList<Dim> &CBondList<Dim>::operator=(const CBondList<Dim> &src)
 {
@@ -83,9 +121,14 @@ CBondList<Dim> &CBondList<Dim>::operator=(const CBondList<Dim> &src)
 	return *this;
 }
 
+/**
+ *	N is automatically updated so that N>b.i and N>b.j. Asserts that b.i>=0 and b.j >= 0.
+ */
 template<int Dim>
-void CBondList<Dim>::AddBond(const BOND &b)
+inline void CBondList<Dim>::AddBond(const BOND &b)
 {
+	assert(b.i>=0);
+	assert(b.j>=0);
 	if(b.i>=N) N=b.i+1;
 	if(b.j>=N) N=b.j+1;
 	list.push_back(b);
@@ -95,6 +138,12 @@ template<int Dim>
 void CBondList<Dim>::SetVolume(dbl _V)
 {
 	Volume = _V;
+}
+
+template<int Dim>
+void CBondList<Dim>::SetN(int _N)
+{
+	N = _N;
 }
 
 template<int Dim>
@@ -116,23 +165,27 @@ dbl CBondList<Dim>::GetVolume() const
 }
 
 template<int Dim>
-void CBondList<Dim>::CalculateNeighbors(std::vector< std::vector<int> > &nbrs) const
+void CBondList<Dim>::CalculateNeighbors(vector< vector<int> > &nbrs) const
 {
-	nbrs.assign(N, std::vector<int>());
-	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	nbrs.assign(N, vector<int>());
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 	{
 		nbrs[b->i].push_back(b->j);
 		nbrs[b->j].push_back(b->i);
 	}
 }
 
-//Remove a set of bonds from list. Do not change any of the bonds (like their indices)
-//BondsToRemove[i] = true if the i'th bond should be removed, false otherwise
+/**
+ *	Bonds that are not removed are not altered in any way, and N does not change.
+ *
+ *	@param[in] BondsToRemove A constant vector<bool> of length list.size() that determines
+ *	which bonds to remove. Bond i is removed only if BondsToRemove[i]==true.
+ */
 template<int Dim>
-void CBondList<Dim>::RemoveBonds(std::vector<bool> const &BondsToRemove)
+void CBondList<Dim>::RemoveBonds(vector<bool> const &BondsToRemove)
 {
 	assert(BondsToRemove.size() == list.size());
-	std::vector<BOND> tlist;
+	vector<BOND> tlist;
 	tlist.reserve(list.size());
 
 	for(int i=0; i<(int)list.size(); ++i)
@@ -146,7 +199,7 @@ template<int Dim>
 void CBondList<Dim>::UpdateBondIndices(index_map const &map)
 {
 	assert(map.full_size == N);
-	for(typename std::vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
 	{
 		//check that the bond does not involve a rattler
 		assert(map.inv(b->i) != -1);
@@ -159,10 +212,18 @@ void CBondList<Dim>::UpdateBondIndices(index_map const &map)
 	N = map.size();
 }
 
-//rattlers should already be initialized. if rattler[i]==true to begin, it is assumed to already be designated a rattler
-//return the number of total rattlers
+/**
+ *	@param[in,out] nbrs A vector of vectors of ints that gives the neighbors of each node. This is updated so that rattlers are removed.
+ *	@param[in,out] rattlers A vector of bools such that node i is a rattler if rattlers[i]==true. Nodes can be manually designated as a rattler by setting 
+ *	rattlers[i]=true before calling this function (normally, all elements of rattlers should be initialied to false). On return, this identifies the nodes that
+ *	are rattlers.
+ *	@param[in] fixed A vector of bools that identifies nodes as being fixed, and thus cannot become a rattler.
+ *	@param[in] c The number of bonds involving a node required for that node to not be a rattler. Default is Dim+1.
+ *	@param[in] Verbose Bool to determine if number of identified rattlers, etc. should be printed to stdout.
+ *	@return The total number of rattlers.
+ */
 template<int Dim>
-int CBondList<Dim>::IdentifyRattlers(std::vector< std::vector<int> > &nbrs, std::vector<bool> &rattlers, std::vector<bool> const &fixed, int c, bool Verbose) const
+int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c, bool Verbose) const
 {
 	assert(rattlers.size() == nbrs.size());
 	assert(rattlers.size() == N);
@@ -239,9 +300,9 @@ int CBondList<Dim>::IdentifyRattlers(std::vector< std::vector<int> > &nbrs, std:
 }
 
 template<int Dim>
-int CBondList<Dim>::IdentifyRattlers(std::vector< std::vector<int> > &nbrs, std::vector<bool> &rattlers, int c, bool Verbose) const
+int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c, bool Verbose) const
 {
-	std::vector<bool> fixed;
+	vector<bool> fixed;
 	fixed.assign(N,false);
 	return IdentifyRattlers(nbrs,rattlers,fixed,c,Verbose);
 }
@@ -253,20 +314,27 @@ void CBondList<Dim>::RemoveRattlers(int c, bool Verbose)
 	RemoveRattlers(map, c, Verbose);
 }
 
+/**
+ *	This method calculates the nbrs list, identifies rattlers, sets map, removes any bonds that may involve rattlers, and updates the i and j indices of each bond (as well as N) to account for the removed rattlers.
+ *	
+ *	@param[out] map An index_map indicating which nodes are rattlers.
+ *	@param[in] c The number of bonds involving a node required for that node to not be a rattler. Default is Dim+1.
+ *	@param[in] Verbose Bool to determine if number of identified rattlers, etc. should be printed to stdout.
+ */
 template<int Dim>
 void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 {
 	//Calculate the nbrs list
-	std::vector< std::vector<int> > nbrs;
+	vector< vector<int> > nbrs;
 	CalculateNeighbors(nbrs);
 	
 	//Identify the rattlers and set the map
-	std::vector<bool> rattlers(N,false);
+	vector<bool> rattlers(N,false);
 	IdentifyRattlers(nbrs, rattlers, c, Verbose);
 	map.set_map(rattlers);
 	
 	//Remove the bonds that correspond to rattlers
-	std::vector<bool> BondsToRemove(list.size(),false);
+	vector<bool> BondsToRemove(list.size(),false);
 	for(int i=0; i<(int)list.size(); ++i)
 		if(rattlers[list[i].i] || rattlers[list[i].j])
 			BondsToRemove[i] = true;
@@ -274,20 +342,17 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 
 	//Update the i and j indices of each bond (as well as N) in accordence with the map
 	UpdateBondIndices(map);
+
+	if(!CheckConsistency())
+		abort();
 }
 
 template<int Dim>
 dbl  CBondList<Dim>::ComputeEnergy() const
 {
-//	printf("110\n"); fflush(stdout);
 	dbl energy=0.;
-//	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
-//		energy += b->E;
-	for(int b=0; b<(int)list.size(); ++b)
-	{
-//		printf("111 %i\n", b); fflush(stdout);
-		energy += list[b].E;
-	}
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+		energy += b->E;
 	return energy;
 }
 
@@ -303,7 +368,7 @@ template<int Dim>
 void CBondList<Dim>::ComputeStressTensor(dmat &stress) const
 {
 	stress.setZero();
-	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 		stress += b->g*((b->r)*(b->r.transpose()))/(b->rlen);
 	stress /= Volume;
 }
@@ -317,7 +382,7 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 	dbl energy = 0.;
 	dvec temp;
 	int dd;
-	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 	{
 		energy += b->E;
 		temp = (b->g/b->rlen)*b->r;
@@ -331,7 +396,7 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 }
 
 template<int Dim>
-void CBondList<Dim>::ComputeHessianElements(std::vector<TRIP> &coefficients, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
+void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
 	dmat Fii, Fjj, Fij; //Fji = Fij.transpoze(); stressed block
 	dmat Kii, Kjj, Kij; //Kji = Kij.transpose(); unstressed block
@@ -340,7 +405,7 @@ void CBondList<Dim>::ComputeHessianElements(std::vector<TRIP> &coefficients, dve
 	dbl kdotr;
 	cdbl eikdotr;
 	int icorner, jcorner;
-	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 	{
 		//Calculate exp{i k\cdot r} = cos(k \cdot r) + i sin(k \cdot r)
 		kdotr = k.dot(b->r);
@@ -373,11 +438,21 @@ void CBondList<Dim>::ComputeHessianElements(std::vector<TRIP> &coefficients, dve
 		coefficients.push_back( TRIP(ii, ii, cdbl(tether,0)) );
 }
 
+
+/**
+ *	This is the primary method for calculating the hessian, which is returned as an Eigen::SparseMatrix<dbl> through the parameter hess.
+ *
+ *	@param[out] hess Eigen::SparseMatrix<dbl> representing the hessian.
+ *	@param[in] unstress_coeff A dbl indicating the weight given to the unstressed component of the hessian. For most purposes, this should be set to 1 (default).
+ *	@param[in] stress_coeff A dbl indicating the weight given to the stressed component of the hessian. For most purposes, this should be set to 1 (default). 
+ *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
+ *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
+ */
 template<int Dim>
 void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
 	//First, compute the complex matrix elements with k=0
-	std::vector<TRIP> coeffs;
+	vector<TRIP> coeffs;
 	dvec k = dvec::Zero();
 	ComputeHessianElements(coeffs, k, unstress_coeff, stress_coeff, tether);
 	
@@ -392,13 +467,25 @@ void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress
 	assert(hess.isCompressed());
 }
 
+/**
+ *	This method calculates the hessian at a non-zero wavevector, returning it as an Eigen::SparseMatrix<cdbl> through the parameter hess.
+ *
+ *	@param[out] hess Eigen::SparseMatrix<cdbl> representing the hessian.
+ *	@param[in] k A dvec indicating the wavevector.
+ *	@param[in] unstress_coeff A dbl indicating the weight given to the unstressed component of the hessian. For most purposes, this should be set to 1 (default).
+ *	@param[in] stress_coeff A dbl indicating the weight given to the stressed component of the hessian. For most purposes, this should be set to 1 (default). 
+ *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
+ *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
+ */
 template<int Dim>
 void CBondList<Dim>::ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
-	std::vector<TRIP> coeffs;
+	vector<TRIP> coeffs;
 	ComputeHessianElements(coeffs, k, unstress_coeff, stress_coeff, tether);
 
-	hess.setZero();
+	Eigen::SparseMatrix<cdbl> temp(Dim*N,Dim*N);
+	hess = temp;
+	//hess.setZero();
 	hess.setFromTriplets(coeffs.begin(), coeffs.end());
 	assert(hess.isCompressed());
 }
@@ -411,7 +498,7 @@ void CBondList<Dim>::ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, 
 template<int Dim>
 void CBondList<Dim>::PrintBonds() const
 {
-	for(typename std::vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 		b->print();
 }
 
@@ -441,10 +528,9 @@ bool CBondList<Dim>::CheckConsistency() const
 
 
 
-//template<int Dim>
-//void CBondList<Dim>::
-//template<int Dim>
-//void CBondList<Dim>::
+
+
+}
 
 #endif //BOND_LIST_H
 

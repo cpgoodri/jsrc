@@ -48,9 +48,8 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "../Resources/std_include.h"
-#include "../Potentials/Potential.h"
+#include "../Potentials/Potentials.h" //This loads all the potentials
 #include "../Boundaries/Box.h"
-#include "../Potentials/HarmonicPotential.h"
 #include "../Boundaries/PeriodicBox.h"
 #include "netcdfcpp.h"
 #include "../Resources/MersenneTwister.h"
@@ -118,14 +117,18 @@ public:
 	void SetPackingFraction(dbl phi);
 
 //Functions to get properties of the system
-	void GetRadii(Eigen::VectorXd &);	
-	dbl GetRadius(int i);
-	void GetPositions(Eigen::VectorXd &);
-	void GetPositionsVirtual(Eigen::VectorXd &);
-	void GetParticlePosition(dvec &, int i);
-	void GetParticlePositionVirtual(dvec &, int i);
-	void GetDisplacement(int i, int j, dvec &displacement);
-	void GetDisplacementVirtual(int i, int j, dvec &displacement);
+	void GetRadii(Eigen::VectorXd &) const;	
+	dbl GetRadius(int i) const;
+	dbl GetMinimumRadius() const;
+	dbl GetMaximumRadius() const;
+	dbl GetAverageRadius() const;
+
+	void GetPositions(Eigen::VectorXd &) const;
+	void GetPositionsVirtual(Eigen::VectorXd &) const;
+	void GetParticlePosition(dvec &, int i) const;
+	void GetParticlePositionVirtual(dvec &, int i) const;
+	void GetDisplacement(int i, int j, dvec &displacement) const;
+	void GetDisplacementVirtual(int i, int j, dvec &displacement) const;
 	CBox<Dim> *GetBox();	
 	CPotential *GetPotential();
 	dbl  GetSphereVolume() const;
@@ -133,7 +136,7 @@ public:
 	dbl  GetVolume() const;
 	int  GetParticleNumber() const;
 
-	dvec GetMaxDistance() const;
+	void GetMaxDistance(dvec &dist) const;
 
 	void PrintParticles() const;
 
@@ -195,8 +198,8 @@ CStaticState<Dim>::CStaticState(int _N)
 	Potential = new CHarmonicPotential();
 	
 	Positions = Eigen::ArrayXd::Zero(Dim*N);
-	Radii = Eigen::ArrayXd::Constant(N,1.);
-//	Radii = Eigen::ArrayXd::Constant(N,0.5);
+//	Radii = Eigen::ArrayXd::Constant(N,1.);
+	Radii = Eigen::ArrayXd::Constant(N,0.5);
 }
 	
 template<int Dim>
@@ -241,7 +244,7 @@ void CStaticState<Dim>::RandomizePositions(MTRand *random)
 {
 	for(int i = 0; i<N ; i++)
 		for(int d = 0 ; d < Dim; d++)
-			Positions(Dim*i + d) = random->rand();
+			Positions(Dim*i + d) = random->randExc();
 }
 
 template<int Dim>
@@ -433,34 +436,52 @@ void CStaticState<Dim>::SetPackingFraction(dbl phi)
 
 //Functions to get properties of the system
 template <int Dim>
-void CStaticState<Dim>::GetRadii(Eigen::VectorXd &t_Radii)
+void CStaticState<Dim>::GetRadii(Eigen::VectorXd &t_Radii) const
 {
 	t_Radii = Radii;
 }
 
 template <int Dim>
-dbl CStaticState<Dim>::GetRadius(int i)
+dbl CStaticState<Dim>::GetRadius(int i) const
 {
 	if(i<0||i>N)
 		throw(CException("CStaticState<Dim>::GetRadius","Attempting to get the radius of a particle that does not exist."));
 	return Radii(i);
 }
 
+template <int Dim>
+dbl CStaticState<Dim>::GetMinimumRadius() const
+{
+	return Radii.minCoeff();
+}
+
+template <int Dim>
+dbl CStaticState<Dim>::GetMaximumRadius() const
+{
+	return Radii.maxCoeff();
+}
+
+template <int Dim>
+dbl CStaticState<Dim>::GetAverageRadius() const
+{
+	return Radii.mean();
+}
+
 template<int Dim>
-void CStaticState<Dim>::GetPositions(Eigen::VectorXd &t_Positions)
+void CStaticState<Dim>::GetPositions(Eigen::VectorXd &t_Positions) const
 {
 	t_Positions = Positions;
 	Box->Transform(t_Positions);
 }
 
 template<int Dim>
-void CStaticState<Dim>::GetPositionsVirtual(Eigen::VectorXd &t_Positions)
+void CStaticState<Dim>::GetPositionsVirtual(Eigen::VectorXd &t_Positions) const
 {
 	t_Positions = Positions;
 }
 
 template <int Dim>
-void CStaticState<Dim>::GetParticlePosition(Eigen::Matrix<dbl,Dim,1> &t_Position, int i)
+void CStaticState<Dim>::GetParticlePosition(Eigen::Matrix<dbl,Dim,1> &t_Position, int i) const
 {
 	if(i<0||i>N)
 		throw(CException("CStaticState<Dim>::GetParticlePosition","Attempting to set the position of a particle that does not exist."));
@@ -470,7 +491,7 @@ void CStaticState<Dim>::GetParticlePosition(Eigen::Matrix<dbl,Dim,1> &t_Position
 }
 
 template <int Dim>
-void CStaticState<Dim>::GetParticlePositionVirtual(Eigen::Matrix<dbl,Dim,1> &t_Position, int i)
+void CStaticState<Dim>::GetParticlePositionVirtual(Eigen::Matrix<dbl,Dim,1> &t_Position, int i) const
 {
 	if(i<0||i>N)
 		throw(CException("CStaticState<Dim>::GetParticlePositionVirtual","Attempting to set the position of a particle that does not exist."));
@@ -479,7 +500,7 @@ void CStaticState<Dim>::GetParticlePositionVirtual(Eigen::Matrix<dbl,Dim,1> &t_P
 }
 
 template <int Dim>
-void CStaticState<Dim>::GetDisplacement(int i,int j,Eigen::Matrix<dbl,Dim,1> &displacement)
+void CStaticState<Dim>::GetDisplacement(int i,int j,Eigen::Matrix<dbl,Dim,1> &displacement) const
 {
 	if(i<0||i>N||j<0||j>N)
 		throw(CException("CStaticState<Dim>::GetDisplacement","Attempting to get the displacement between particles that do not exist."));
@@ -490,7 +511,7 @@ void CStaticState<Dim>::GetDisplacement(int i,int j,Eigen::Matrix<dbl,Dim,1> &di
 }
 
 template <int Dim>
-void CStaticState<Dim>::GetDisplacementVirtual(int i,int j,Eigen::Matrix<dbl,Dim,1> &displacement)
+void CStaticState<Dim>::GetDisplacementVirtual(int i,int j,Eigen::Matrix<dbl,Dim,1> &displacement) const
 {
 	if(i<0||i>N||j<0||j>N)
 		throw(CException("CStaticState<Dim>::GetDisplacement","Attempting to get the displacement between particles that do not exist."));
@@ -539,12 +560,11 @@ int CStaticState<Dim>::GetParticleNumber() const
 }
 
 template <int Dim>
-Eigen::Matrix<dbl,Dim,1> CStaticState<Dim>::GetMaxDistance() const
+//Eigen::Matrix<dbl,Dim,1> CStaticState<Dim>::GetMaxDistance() const
+void CStaticState<Dim>::GetMaxDistance(dvec &dist) const
 {
-
-	dbl MaxDistance = 2.*Radii.maxCoeff()*Potential->ComputeSupport();
-	return dvec::Constant(MaxDistance);
-
+	Box->GetMaxTransformedDistance(dist);
+	dist *= 2.*Radii.maxCoeff()*Potential->ComputeSupport();
 }
 	
 template <int Dim>

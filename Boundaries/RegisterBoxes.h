@@ -41,6 +41,7 @@ template<int Dim>
 void RegisterBoxes()
 {
 	CBox<Dim>::AddBoxType("PeriodicBox",new CPeriodicBox<Dim>());
+	CBox<Dim>::AddBoxType("PeriodicBox1",new CPeriodicBox<Dim,1>());
 	
 }
 

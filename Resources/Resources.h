@@ -10,38 +10,27 @@
 #ifndef RESOURCES
 #define RESOURCES
 
-
 #include "std_include.h"
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <sstream>
-#include <iomanip>
-#include <stdexcept>
-#include <list>
 
-//#include "Eigen/Core"
-
-#define PI M_PI
-//#define PI 3.1415926535897932384626433832795028841971693993751058
+/** @file */ 
 
 
-using namespace std;
+// @file A file for commonly used global functions.
 
 
-template <typename T> inline T POW2(T x) {	return x*x;}
-template <typename T> inline T POW3(T x) {	return x*x*x;}
-template <typename T> inline T POW4(T x) 
+template <typename T> inline T POW2(T x){	return x*x;}	//!<x^2
+template <typename T> inline T POW3(T x){	return x*x*x;}	//!<x^3
+template <typename T> inline T POW4(T x) //!<x^4 
 {
 	T temp = x*x;
 	return temp*temp;
 }
-template <typename T> inline T POW6(T x) 
+template <typename T> inline T POW6(T x) //!<x^6
 {
 	T temp = x*x*x;
 	return temp*temp;
 }
-template <typename T> inline T POW12(T x) 
+template <typename T> inline T POW12(T x) //!<x^12
 {
 	T temp = x*x*x;
 	temp = temp*temp;
@@ -49,6 +38,7 @@ template <typename T> inline T POW12(T x)
 }
 
 
+//! Get the largest absolute value from an array
 template <typename T>
 inline T max_abs_element(int N, T const *const a)
 {
@@ -68,7 +58,7 @@ inline T max_abs_element(int N, T const *const a)
 
 
 
-
+//! Check if a file exists.
 inline bool FileExists(std::string strFilename)
 {
 	struct stat stFileInfo;

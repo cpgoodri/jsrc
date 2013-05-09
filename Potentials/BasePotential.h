@@ -1,6 +1,5 @@
-#ifndef POTENTIAL
-
-#define POTENTIAL
+#ifndef BASE_POTENTIAL_H
+#define BASE_POTENTIAL_H
 
 /////////////////////////////////////////////////////////////////////////////////
 //Potential class. 
@@ -42,11 +41,7 @@
 #include "../Resources/std_include.h"
 #include "../Resources/Exception.h"
 #include "../Resources/Resources.h"
-#include "../Resources/MersenneTwister.h"
 #include "netcdfcpp.h"
-#include <map>
-#include <string>
-#include <vector>
 
 namespace LiuJamming
 {
@@ -61,6 +56,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+//!Abstract base class for pair-potentials.
 class CPotential
 {
 private:
@@ -73,41 +69,61 @@ private:
 	static void PopulateNetCDF(NcFile &file);
 	
 public:
-//global functions to read box configurations
+//! @name Global functions to read and write
+///@{
 	static CPotential *Read(const NcFile &file,int record);
 	static void AddPotentialType(string type,CPotential *pot);
 
-private:
-	
-public:
-//constructors and copy operators
+///@}
 
-//functions to write potential configurations
-	void Write(NcFile &file,int record); 
-	virtual string DataToString() = 0;
-	
-//functions to read potential configurations
+//! @name Functions to read and write potential configurations
+///@{
+	//static string GetName() const = 0;
+	virtual string DataToString() const = 0;
  	virtual void StringToData(string Data) = 0;
  	virtual CPotential *Create() = 0;
-	
-//functions to compute various derivatives
-	virtual dbl Compute(dbl dr,dbl r) const = 0;
-	virtual dbl ComputeFirstDerivative(dbl dr,dbl r) const = 0;
-	virtual dbl ComputeSecondDerivative(dbl dr, dbl r) const = 0;
-	virtual dbl ComputeThirdDerivative(dbl dr, dbl r) const = 0;
+	void Write(NcFile &file,int record); 
 
-//functions to compute multiple derivatives at a time
-	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const = 0;
-	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;
-	
-//functions to get other properties of the potential
+///@}
 
-	//return rmax: the maximum distance between two particles of unit diameter such that they interact
+
+//! @name Functions to compute various derivatives
+///@{
+	virtual dbl  Compute(dbl dr,dbl r) const = 0;											//!<Compute the 0th derivative
+	virtual dbl  ComputeFirstDerivative(dbl dr,dbl r) const = 0;							//!<Compute the 1st derivative
+	virtual dbl  ComputeSecondDerivative(dbl dr, dbl r) const = 0;							//!<Compute the 2nd derivative
+	virtual dbl  ComputeThirdDerivative(dbl dr, dbl r) const = 0;							//!<Compute the 3th derivative
+	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const = 0;				//!<Compute the 0th and 1st derivatives
+	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;	//!<Compute the 0th and 1st and 2nd derivatives
+	
+///@}
+
+//! @name Misc.
+///@{
+	//!Get the maximum distance between two particles of unit diameter such that they interact
 	virtual dbl ComputeSupport() const = 0;
+	//static map<string,CPotential*> CreateMap();
 	
+///@}
 };
 
-std::map<string,CPotential*> CPotential::PotentialTypes;
+/*
+//Include all the potential headers here. In a program, one only needs to include Potential.h
+#include "HarmonicPotential.h"
+
+static map<string,CPotential*> CreatePotentialMap()
+{
+	map<string,CPotential*> m;
+	CPotential *p;
+	
+	//For each potential...
+	p = new CHarmonicPotential(); m[CHarmonicPotential::GetName()] = p;
+
+	return m;
+}
+
+std::map<string,CPotential*> CPotential::PotentialTypes = CreatePotentialMap();
+*/
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -179,4 +195,4 @@ void CPotential::Write(NcFile &file,int record)
 
 }
 
-#endif
+#endif //BASE_POTENTIAL_H

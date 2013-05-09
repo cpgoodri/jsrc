@@ -132,10 +132,12 @@ public:
 	virtual void GetPeriodicDimensions(std::vector<int> &) const = 0;
 	
 //functions involving the boundary
-	virtual void MoveParticles(Eigen::VectorXd &Points,Eigen::VectorXd &Displacements)  {};
-	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) {}; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
-	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const {};
-	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const {};
+	virtual void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const = 0;
+	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const = 0; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
+	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const = 0;
+	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const = 0;
+
+	void GetMaxTransformedDistance(dvec &dist) const;
 
 };
 
@@ -367,7 +369,8 @@ template <int Dim>
 void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement)
 {
 	dvec Displacement;
-	int np = Points.cols()/Dim;
+	//int np = Points.cols()/Dim;
+	int np = Points.size()/Dim;
 	switch(BoxSymmetry)
 	{
 		case RECTANGULAR: 
@@ -410,6 +413,19 @@ dbl CBox<Dim>::CalculateVolume() const
 		default:
 			return fabs(Transformation.determinant());
 	}
+}
+
+/**
+ *	In general, a Dim-dimensional sphere of unit radius (in real units)
+ *	is represented by an ellipse in transformed units. 
+ *	This method calculates the largest component, in transformed units, in 
+ *	each direction over the enitre ellipse.
+ */
+template <int Dim>
+void CBox<Dim>::GetMaxTransformedDistance(dvec &dist) const
+{
+	for(int dd=0; dd<Dim; ++dd)
+		dist[dd] = Inverse_Transformation.row(dd).norm();
 }
 
 }

@@ -41,7 +41,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "../Resources/std_include.h"
-#include "../Potentials/Potential.h"
+#include "../Potentials/Potentials.h"
 #include "../Boundaries/Box.h"
 #include "../Resources/MersenneTwister.h"
 #include "../State/StaticState.h"
@@ -109,6 +109,7 @@ public:
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
 	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
 	void Move(Eigen::VectorXd const &step);
+	dbl GetMinimizationTimeScale() const;
     
 };
 
@@ -146,27 +147,37 @@ void CStaticComputer<Dim>::SetState(CStaticState<Dim> & _State)
 }
 	
 template <int Dim>
-dbl CStaticComputer<Dim>::GetVolume() const
+inline dbl CStaticComputer<Dim>::GetVolume() const
 {
 	return State.GetVolume();
 }
 
 template <int Dim>
-int CStaticComputer<Dim>::GetNdof() const
+inline int CStaticComputer<Dim>::GetNdof() const
 {
 	return State.GetParticleNumber()*Dim;
 }
-	
+
+template <int Dim>
+inline dbl CStaticComputer<Dim>::GetMinimizationTimeScale() const
+{
+	dbl avgRad = State.GetAverageRadius();
+	return avgRad; //This is emperical!!! NOT GENERAL!
+}
+
 //Compute the bond list
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 {
 	Grid.Construct();
+	//Grid.PrintGrid();
 
+	bonds.SetN(State.GetParticleNumber());
 	dvec Displacement;
 	dbl sigma, rlen, rlen2, E, g, k;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
+//		typename CGrid<Dim>::iterator it2 = Grid.GetParticleIterator(i);
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++) //(*it) is the particle index of a potential neighbor
 		{
 			if((*it)>i)
@@ -184,12 +195,14 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 		}
 	}
 	bonds.SetVolume(GetVolume());
+	
 }
 
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 {
 	dvec Displacement;
+	bonds.SetN(State.GetParticleNumber());
 	dbl sigma, rlen, rlen2, E, g, k;
 	for(int i = 0 ; i < State.GetParticleNumber()-1 ; i++)
 		for(int j = i+1 ; j < State.GetParticleNumber() ; j++)
@@ -233,7 +246,7 @@ bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int ite
 };
 
 template <int Dim>
-void CStaticComputer<Dim>::Move(Eigen::VectorXd const &step) 
+inline void CStaticComputer<Dim>::Move(Eigen::VectorXd const &step) 
 {
 	State.MoveParticles(step);
 };

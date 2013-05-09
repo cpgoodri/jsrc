@@ -41,7 +41,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "../Resources/std_include.h"
-#include "../Potentials/Potential.h"
+#include "../Potentials/Potentials.h"
 #include "../Boundaries/Box.h"
 #include "../Resources/MersenneTwister.h"
 #include <list>
@@ -60,14 +60,26 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+
+//!Abstract base class for Computers.
+
 template <int Dim>
 class CBaseComputer
 {
 public:
-//Get generic info
-	virtual dbl GetVolume() const = 0;
-	virtual int GetNdof() const = 0;
+//! @name Get Info
+///@{
+	virtual dbl GetVolume() const = 0;		//!<Get the volume
+	virtual int GetNdof() const = 0;		//!<Get the number of degrees of freedom
+//	virtual dbl GetTimeUnit() const = 0;	//!<Get the unit of time
+//	virtual dbl GetLengthUnit() const = 0;	//!<Get the unit of length
+//	virtual dbl GetEnergyUnit() const = 0;	//!<Get the unit of energy
+//	virtual dbl GetMassUnit() const = 0;	//!<Get the unit of mass
 
+///@}
+
+//! @name Stataic Computations
+///@{
 //Compute the energy of the system
     virtual double ComputeEnergy() = 0;
     
@@ -82,7 +94,10 @@ public:
 //computes at q = 0
     virtual void ComputeDynamicalMatrix(Eigen::MatrixXd &tar) = 0;
 
-//Needed for minimization routines
+///@}
+
+//! @name Methods for Minimization
+///@{
 	virtual void Evaluate(Eigen::VectorXd &grad, dbl &fx) = 0;
 	virtual bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol) = 0;
 	virtual void Move(Eigen::VectorXd const &step) = 0;
@@ -90,6 +105,9 @@ public:
 	{
 		printf("         ii                       Energy            norm        max_grad \n");
 	};
+	virtual dbl GetMinimizationTimeScale() const = 0;
+
+///@}
    
 };
 

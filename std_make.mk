@@ -51,6 +51,7 @@ ORULE = $(CPP) $(CFLAGS) -o $@ $(OBJGQS) $(LIBRARY) $(LINK)
 StandardDependencies = \
 	$(srcDIR)/Boundaries/*.h \
 	$(srcDIR)/Computers/*.h \
+	$(srcDIR)/Minimization/*.h \
 	$(srcDIR)/Potentials/*.h \
 	$(srcDIR)/Resources/*.h \
 	$(srcDIR)/State/*.h

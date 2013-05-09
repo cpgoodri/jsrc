@@ -41,16 +41,15 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "../Resources/std_include.h"
-#include "../Potentials/Potential.h"
+#include "../Potentials/Potentials.h"
 #include "../Boundaries/Box.h"
-#include "../Resources/MersenneTwister.h"
-#include <list>
+//#include "../Resources/MersenneTwister.h"
 
 
 namespace LiuJamming
 {
 
-using namespace std;
+//using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +59,11 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+
+//!Grid class to efficiently calculate neighbors.
+/**This class maintains a spatial partition of particle systems so that
+ * only local regions of a given particle need to be searched for neighbors.
+ */
 template <int Dim>
 class CGrid
 {
@@ -67,6 +71,7 @@ class CGrid
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 public:
 
+	//!iterator class to allow the user to iterate over potential neighbors.
 	class iterator {
 	private:
 		list<int>::iterator CurrentCell;
@@ -78,6 +83,7 @@ public:
 		int *CellList;
 		
 	public:
+		//!Constructor
 		iterator(list<int> &dual,int *occ_list, int *cell_list)
 		{
 			CurrentCell = dual.begin();
@@ -85,87 +91,105 @@ public:
 			OccupancyList = occ_list;
 			CellList = cell_list;
 			CurrentParticle = CellList[(*CurrentCell)];
-		}
+			IncrementCellIfNecessary();
+		};
 
-		iterator &operator ++() {
-			if(CurrentParticle!=-1){
-				//cout << "Incrementing iterator; current particle is " << CurrentParticle << endl;
+		//!Increment operator
+		iterator &operator ++() 
+		{
+			if(CurrentParticle!=-1)
+			{
 				CurrentParticle = OccupancyList[CurrentParticle];
-				while(CurrentParticle==-1&&CurrentCell!=End)
-				{
-					CurrentCell++;
-					//cout << "Incrementing cell iterator; current cell is " << (*CurrentCell) << endl;
-					if(CurrentCell!=End)
-						CurrentParticle = CellList[(*CurrentCell)];
-				}
+				IncrementCellIfNecessary();
 			}
 			return (*this);
-		}
+		};
 
-		void operator ++(int dummy) {
-			if(CurrentParticle!=-1){
-				//cout << "Incrementing iterator; current particle is " << CurrentParticle << endl;
+		//!Increment operator
+		void operator ++(int dummy)
+		{
+			if(CurrentParticle!=-1)
+			{
 				CurrentParticle = OccupancyList[CurrentParticle];
-				while(CurrentParticle==-1&&CurrentCell!=End)
-				{
-					CurrentCell++;
-					//cout << "Incrementing cell iterator; current cell is " << (*CurrentCell) << endl;
-					if(CurrentCell!=End)
-						CurrentParticle = CellList[(*CurrentCell)];
-				}
+				IncrementCellIfNecessary();
 			}
-		}
-		
+		};
+
+private:
+		//!If CurrentParticle==-1, move on to the next cell.
+		void IncrementCellIfNecessary()
+		{
+			while(CurrentParticle==-1&&CurrentCell!=End)
+			{
+				CurrentCell++;
+				if(CurrentCell!=End)
+					CurrentParticle = CellList[(*CurrentCell)];
+			}
+		};
+
+public:		
+		//!Dereference operator
 		int operator *()
 		{
 			return CurrentParticle;
-		}
+		};
 	};
 
 private:
-	//Box and particle information
-	CStaticState<Dim> *State;
-	int N;
+	CStaticState<Dim> *State;	//!<Pointer to a CStaticState<Dim>.
+	int N;						//!<Number of particles.
 
-	//Cell size given by twice the maximum radius.
-	dvec CellSize;
+	dvec CellSize;				//!<Cell size given by twice the maximum radius.
 	
-	//The number of cells in each dimension
-	int N_Cells[Dim];
-	int TotalCells;
+	int N_Cells[Dim];			//!<The number of cells in each dimension.
+	int TotalCells;				//!<Total number of cells.
 	
-	//The list of particles in each cell
-	int *OccupancyList;
-	int *CellList;
+	int *OccupancyList;			//!<From one particle, points to the next particle in the same cell (or -1 if it is the last particle).
+	int *CellList;				//!<Pointer to the first particle in each cell.
 	
-	//The list of connections between cells.
-	list<int> *DualList;
+	list<int> *DualList;		//!<The list of connections between cells.
 	
 	//Flags
-	bool Reallocate;				//A boolean to indicate whether we have to reallocate the grid.
-	bool DualListUpdateNecessary;	//A boolean to indicate whether the DualList might have changed.
+	bool ReallocationNecessary;		//!<A boolean to indicate whether we have to reallocate the grid.
+	bool DualListUpdateNecessary;	//!<A boolean to indicate whether the DualList might have changed.
 	
 public:
-//Constructor and copy operators
-	CGrid(CStaticState<Dim> *_s);
-	CGrid(const CGrid &copy);
-	
-	const CGrid<Dim> &operator=(const CGrid<Dim> &copy);
-	
-	void SetState(CStaticState<Dim> *s);
+//! @name Constructors and operators
+///@{
+	CGrid(CStaticState<Dim> *_s);							//!<Primary constructor.
+	CGrid(const CGrid &copy);								//!<Copy constructor.
+	~CGrid();												//!<Destructor.
+	const CGrid<Dim> &operator=(const CGrid<Dim> &copy);	//!<Copy operator.
 
-//Functions to construct the grid
-	void Allocate();
-	void Construct();
-	void UpdateDualList();
+	void ClearLists();										//!<Deallocate memory for the lists.
+	void SetN(int _N);										//!<Set N and allocate memory for OccupancyList.
+	void SetState(CStaticState<Dim> *s);					//!<Set the State pointer.
 
-//Functions to access the grid
- 	void CellToCoordinates(int i, dvec &coordinates);
-	int CoordinatesToCell(const dvec &coordinates);
-	iterator GetParticleIterator(int i);
+///@}
+
+
+//! @name Grid manipulation
+///@{
+	void Allocate();		//!<Allocate memory for the grid.
+	void Construct();		//!<Place particles in the grid.
+	void UpdateDualList();	//!<Update the list of cell connections.
+
+///@}
+
+//! @name Functions to access the grid
+///@{
+	iterator GetParticleIterator(int i);				//!<Return an iterator to loop over potential neighbors.
+
+///@}
 	
-//Function to compute the grid cell size ; 
-	dvec ComputeCellSize();
+//! @name Misc.
+///@{
+ 	void CellToCoordinates(int i, dvec &coordinates);	//!<Convert a cell index into a dvec of cell coordinates.
+	int CoordinatesToCell(const dvec &coordinates);		//!<Convert a dvec of cell coordinates into a cell index.
+	dvec ComputeCellSize();								//!<Function to compute the grid cell size.
+	void PrintGrid() const;								//!<Print the grid to stdout.
+
+///@}
 
 };
 
@@ -179,41 +203,47 @@ public:
 
 //Constructor and copy operators
 template <int Dim>
-CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s)
+CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s), OccupancyList(NULL), CellList(NULL), DualList(NULL)
 {
-	N = State->GetParticleNumber();
-	OccupancyList = new int[N];
-	for(int i = 0 ; i<N ; i++)
-		OccupancyList[i] = -1;
-	CellList = NULL;
-	DualList = NULL;
-//	tiling = SQUARE_TILING;
+	ClearLists();
+	SetN(State->GetParticleNumber());
+	for(int i=0; i<N; ++i) OccupancyList[i] = -1;
+//	CellList = NULL;
+//	DualList = NULL;
 }
 
 template <int Dim>
 CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
 {
-	N = State->GetParticleNumber();
-	OccupancyList = new int[N];
-	for(int i = 0 ; i<N ; i++)
-		OccupancyList[i] = -1;
-	CellList = NULL;
-	DualList = NULL;
-//	tiling = copy.tiling;
+	ClearLists();
+	SetN(State->GetParticleNumber());
+	for(int i=0; i<N; ++i) OccupancyList[i] = -1;
+//	CellList = NULL;
+//	DualList = NULL;
 }
 
-//Possible memory leak!
+template <int Dim>
+CGrid<Dim>::~CGrid()
+{
+	ClearLists();
+}
+
+/**
+ * WARNING: this is not implemented correctly.
+ */
 template <int Dim>
 const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 {
-	State = copy.State;
-	N = State->GetParticleNumber();
-	OccupancyList = new int[N];
-	for(int i = 0 ; i<N ; i++)
-		OccupancyList[i] = -1;
-	CellList = NULL;
-	DualList = NULL;
-//	tiling = copy.tiling;
+	if(this != &copy)
+	{
+		printf("WARNING: copying CGrid is not implemented correctly.\n");
+		ClearLists();
+		State = copy.State;
+		SetN(State->GetParticleNumber());
+		for(int i=0; i<N; ++i) OccupancyList[i] = -1;
+//		CellList = NULL;
+//		DualList = NULL;
+	}
 	return *this;
 }
 
@@ -223,22 +253,55 @@ void CGrid<Dim>::SetState(CStaticState<Dim> *s)
 	State = s;
 }
 
+template <int Dim>
+void CGrid<Dim>::ClearLists()
+{
+	if(OccupancyList	!= NULL) delete[] OccupancyList;
+	if(CellList			!= NULL) delete[] CellList;
+	if(DualList			!= NULL) delete[] DualList;
+	OccupancyList = NULL;
+	CellList = NULL;
+	DualList = NULL;
+}
+
+template <int Dim>
+void CGrid<Dim>::SetN(int _N)
+{
+	if(N!=_N)
+	{
+		if(OccupancyList!=NULL)
+		{
+			printf("about to delete[] OccupancyList.\n"); fflush(stdout);
+			delete[] OccupancyList;
+		}
+
+		N = _N;
+		OccupancyList = new int[N];
+
+		ReallocationNecessary = true;
+		DualListUpdateNecessary = true;
+	}
+}
+
 
 //Functions to construct the grid
 template <int Dim>
 void CGrid<Dim>::Allocate()
 {
-	CellSize = ComputeCellSize();
+	dvec MaxDistance;
+	State->GetMaxDistance(MaxDistance);
 
 	//Compute the number of grid elements in each direction. Additionally,
 	//figure out the total number of cells as the product of all of these.
-	int product = 1;
+	TotalCells = 1;
 	for(int i = 0 ; i < Dim ; i++){
-		N_Cells[i] = (int)ceil(1.0/CellSize(i));
-		product*=N_Cells[i];
+		//N_Cells[i] = (int)ceil(1.0/MaxDistance(i));
+		N_Cells[i] = (int)floor(1.0/MaxDistance(i));
+		assert(N_Cells[i] >= 3);
+		TotalCells*=N_Cells[i];
+		CellSize[i] = 1./((dbl)N_Cells[i]);
+		//printf("CellSize[%i] = %e\n", i, CellSize[i]);
 	}
-
-	TotalCells = product;
 
 	if(!(CellList==NULL))
 		delete[] CellList;
@@ -246,20 +309,21 @@ void CGrid<Dim>::Allocate()
 	if(!(DualList==NULL))
 		delete[] DualList;
 
-	CellList = new int[product];
-	for(int i = 0 ; i< product ;i++)
+	CellList = new int[TotalCells];
+	for(int i = 0; i<TotalCells; i++)
 		CellList[i] = -1;
 	
-	DualList = new list<int>[product];
+	DualList = new list<int>[TotalCells];
 
-	Reallocate = false;
+	DualListUpdateNecessary = true;
+	ReallocationNecessary = false;
 }
 
 template <int Dim>
 void CGrid<Dim>::Construct()
 {
 	//Reallocate if needed
-	if(Reallocate)
+	if(ReallocationNecessary)
 		Allocate();
 
 	//This will be taken care of later
@@ -268,10 +332,7 @@ void CGrid<Dim>::Construct()
 
 	//reset CellList
 	for(int i = 0 ; i< TotalCells ;i++)
-	{
-		CellList[i] = -1;
-		//DualList[i].erase(DualList[i].begin(),DualList[i].end());
-	}
+		CellList[i] = -1;  //This is necessary because a cell might not have any particles in it.
 	
 
 	//compute the transformed positions of the particles.
@@ -339,9 +400,9 @@ void CGrid<Dim>::UpdateDualList()
 	}
 
 	//check that there are enough cells
-	std::vector<int> PeriodicDims;
+	vector<int> PeriodicDims;
 	State->GetBox()->GetPeriodicDimensions(PeriodicDims);
-	for(typename std::vector<int>::iterator it=PeriodicDims.begin(); it!=PeriodicDims.end(); ++it)
+	for(typename vector<int>::iterator it=PeriodicDims.begin(); it!=PeriodicDims.end(); ++it)
 		assert(N_Cells[(*it)] >= 3); //this makes sure that you can never touch multiple images of the same particle
 
 	//go through each pair of cells and find their coordinates
@@ -373,6 +434,8 @@ void CGrid<Dim>::UpdateDualList()
 			}
 		}
 	}
+//	for(int i=0; i<TotalCells; ++i)
+//		printf("DualList[%i].size() = %i\n", i, (int)DualList[i].size());
 	DualListUpdateNecessary = false;
 }
 
@@ -402,8 +465,8 @@ int CGrid<Dim>::CoordinatesToCell(const dvec &coordinates)
 	int Prod = 1;
 	for(int j = 0 ; j<Dim ; j++)
 	{
-		Cell_Index += (int)(Prod*floor(coordinates(j)/CellSize(j)));
-		Prod*=(int)N_Cells[j];
+		Cell_Index += Prod*((int)floor(coordinates(j)/CellSize(j)));
+		Prod*=N_Cells[j];
 	}
 	
 	return Cell_Index;
@@ -454,7 +517,41 @@ typename CGrid<Dim>::iterator CGrid<Dim>::GetParticleIterator(int i)
 	return ret;
 }
 
+template <int Dim>
+void CGrid<Dim>::PrintGrid() const
+{
+	printf("Printing Grid:\n");
+	printf("\tN=%i\n", N);
+	printf("\tTotalCells = %i\n", TotalCells);
+	printf("OccupancyList:\n");
+	for(int i=0; i<N; ++i) printf("\t%5i --> %5i\n", i, OccupancyList[i]);
+	printf("CellList:\n");
+	for(int i=0; i<TotalCells; ++i) printf("\t head of cell %5i = %5i\n", i, CellList[i]);
+	printf("DualList:\n");
+	for(int i=0; i<TotalCells; ++i)
+	{
+		printf("\t%5i --> ", i);
+		for(typename list<int>::iterator it = DualList[i].begin(); it!=DualList[i].end(); ++it)
+			printf("%i ", (*it));
+		printf("\n");
+	}
 
+	printf("Cell Details:\n");
+	for(int i=0; i<TotalCells; ++i)
+	{
+		printf("\tcell %5i --> ", i);
+		int curr = CellList[i];
+		while(curr != -1)
+		{
+			printf("%i ", curr);
+			curr = OccupancyList[curr];
+		}
+		printf("\n");
+	}
+
+}
+
+/*
 template <int Dim>
 Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
 {
@@ -462,6 +559,7 @@ Eigen::Matrix<dbl,Dim,1> CGrid<Dim>::ComputeCellSize()
 
 	return MaxDistance;
 }
+*/
 
 /*
 //!!!!!!!!!! I THINK THIS METHOD IS BUGGY
