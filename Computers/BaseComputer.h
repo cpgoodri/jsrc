@@ -42,8 +42,9 @@
 
 #include "../Resources/std_include.h"
 #include "../Potentials/Potentials.h"
-#include "../Boundaries/Box.h"
+#include "../Boundaries/Boxes.h"
 #include "../Resources/MersenneTwister.h"
+#include "BondList.h"
 #include <list>
 
 
@@ -78,8 +79,13 @@ public:
 
 ///@}
 
+
+
+
 //! @name Stataic Computations
 ///@{
+
+/*
 //Compute the energy of the system
     virtual double ComputeEnergy() = 0;
     
@@ -93,7 +99,7 @@ public:
 //Dynamical Matrix Stuff (all done in mass-normalized coordinates)
 //computes at q = 0
     virtual void ComputeDynamicalMatrix(Eigen::MatrixXd &tar) = 0;
-
+*/
 ///@}
 
 //! @name Methods for Minimization

@@ -16,10 +16,10 @@ namespace LiuJamming
 
 
 
-template <typename T> class MatrixInterface;
+template <class T> class MatrixInterface;
 
 //Functions to interface with ARPACK++
-template <typename T> class ARWrapper {}; 
+template <class T> class ARWrapper {}; 
 
 template <>
 class ARWrapper<dbl> 
@@ -36,7 +36,7 @@ template <>
 class ARWrapper<cdbl> 
 {
 public: 
-	ARCompStdEig<cdbl,MatrixInterface<cdbl> > Solver;
+	ARCompStdEig<dbl,MatrixInterface<cdbl> > Solver;
 	static const std::string which;
 	static const std::string which2;
 };
@@ -45,7 +45,7 @@ const std::string ARWrapper<cdbl>::which2("LM");
 
 
 
-template <typename T>
+template <class T>
 static void set_identity(Eigen::SparseMatrix<T> &Identity, int nrows)
 {
 	assert(Identity.rows() == nrows);
@@ -58,32 +58,64 @@ static void set_identity(Eigen::SparseMatrix<T> &Identity, int nrows)
 	Identity.setFromTriplets(triplets.begin(), triplets.end());
 }
 
+template<typename T> void PrintEigenvalues(T *Eigenvalues, Eigen::Matrix<T,Eigen::Dynamic,1> const &Residual, int num_print, int num_converged) {};
+
+
+template<> void PrintEigenvalues(dbl *Eigenvalues, Eigen::Matrix<dbl,Eigen::Dynamic,1> const &Residual, int num_print, int num_converged)
+{
+	printf("     i:       eigenvalue         residual\n");
+	for(int i=0; i<num_print; ++i)
+		printf("%6i:    % e    % e\n", i, Eigenvalues[i], Residual[i]);
+};
+
+class cplxevdata{
+public:
+	cdbl ev, r;
+	cplxevdata(cdbl _ev, cdbl _r)
+		: ev(_ev), r(_r) {};
+};
+bool cplxevdata_lessthan(cplxevdata const &c1, cplxevdata const &c2)
+{	return (std::real(c1.ev) < std::real(c2.ev)); }
+
+template<> void PrintEigenvalues(cdbl *Eigenvalues, Eigen::Matrix<cdbl,Eigen::Dynamic,1> const &Residual, int num_print, int num_converged)
+{
+	vector<cplxevdata> evtemp;
+	evtemp.reserve(num_converged);
+	for(int i=0; i<num_converged; ++i)
+		evtemp.push_back( cplxevdata(Eigenvalues[i], Residual[i]) );
+	std::sort(evtemp.begin(), evtemp.end(), cplxevdata_lessthan);
+	printf("     i:       eigenvalue                              residual\n");
+	for(int i=0; i<num_print; ++i)
+	{
+		printf("%6i:    % e  +  % e i     % e  +  % e i\n", i, std::real(evtemp[i].ev), std::imag(evtemp[i].ev), std::real(evtemp[i].r), std::imag(evtemp[i].r));
+	}
+};
+	
 
 
 
 
 
 
-template<typename T>
+
+
+template<class T>
 class MatrixInterface 
 {
 private:
 	typedef Eigen::SparseMatrix<T> EMatrix;
+	typedef Eigen::Matrix<T,Eigen::Dynamic,1> EVector;
 
 	//internal data
 	double diagonalization_time;
 	long int Mv_counter;
 	long int num_Mv_calls;
 
-	long int OPv_counter;
-	long int num_OPv_calls;
+	//long int OPv_counter;
+	//long int num_OPv_calls;
 
 public:
 	EMatrix A; //The matrix
-
-//	//Used for diagonalizing with shift and invert mode
-//	EMatrix OPinv; //OP = (A-sigma.I)^{-1}, where sigma is a shift and I is the identity. OPinv = A-sigma.I will be allocated only when needed.
-//	Eigen::UmfPackLU<EMatrix> OP_solver;
 
 	T *Eigenvalues;
 	T *Eigenvectors;
@@ -96,19 +128,19 @@ public:
 	Eigen::UmfPackLU<EMatrix> UMFsolver;
 
 	MatrixInterface()
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(1), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), Eigenvalues(NULL), Eigenvectors(NULL)
 	{
 	};
 
 	MatrixInterface(EMatrix const &mat)
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(1), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), Eigenvalues(NULL), Eigenvectors(NULL)
 		  A(mat)
 	{
 	};
 
 	~MatrixInterface()
 	{
-		clear_eigenstuff();
+		ClearEigenstuff();
 	}
 
 
@@ -119,55 +151,48 @@ public:
 //	void set_diagonalize_numev  (int numev ){	diagonalize_numev   = numev;	};
 
 	void clear();
-	int size() { return A.rows(); };
+	int size() const { return A.rows(); };
 
-	void MultDv(T *v, T *w)
+private:
+	void MultMv_ARPACK(T *v, T *w)
 	{
 		//Count the number of times this method is called. Print every 100 times
 		++Mv_counter;
 		if(Mv_counter%100 == 0) { printf(" %li", Mv_counter); fflush(stdout); }
 
-		Eigen::Map<Eigen::Matrix<T,Eigen::Dynamic,1> > E_v(v,A.rows());
-		Eigen::Map<Eigen::Matrix<T,Eigen::Dynamic,1> > E_w(w,A.rows());
-		E_w = A * E_v;
-	};
-	void cMultDv(T const *v, T *w) const
-	{
-		Eigen::Map<const Eigen::Matrix<T,Eigen::Dynamic,1> > E_v(v,A.rows());
-		Eigen::Map<Eigen::Matrix<T,Eigen::Dynamic,1> > E_w(w,A.rows());
-		E_w = A * E_v;
+		Eigen::Map<EVector> Ev(v,A.rows());
+		Eigen::Map<EVector> Ew(w,A.rows());
+		Ew = A * Ev;
+		//Ew = A.selfadjointView<>() * Ev; //Not sure why this doesn't work.
 	};
 
-	T cMultvDw_real(T const *v, T const *w) const //THIS SHOULD BE COMBINED WITH cMultvDw!!!!!!!
+public:
+	void MultMv(EVector const &v, EVector &w) const
 	{
-		T Dw[A.rows()];
-		cMultDv(w, Dw);
-		T result = T(0);
-		for(int i=0; i<A.rows(); ++i)
-			result += v[i]*Dw[i];
-		return result;
+		w = A * v;
 	}
 
-	T cMultvDw(T const *v, T const *w) const
+	void MultMv(T const *v, T *w) const
 	{
-		T Dw[A.rows()];
-		cMultDv(w, Dw);
-		T result = T(0);
-		for(int i=0; i<A.rows(); ++i)
-			result += std::conj(v[i])*Dw[i];
-		return result;
+		Eigen::Map<const EVector> Ev(v,A.rows());
+		Eigen::Map<      EVector> Ew(w,A.rows());
+		Ew = A * Ev;
+	};
+
+	T MultvMw(EVector const &v, EVector const &w) const
+	{
+		EVector Dw = A * w;
+		return v.dot(Dw);
 	}
 
-	void MultOPv(T *v, T *w)
+	T MultvMw(T const *v, T const *w) const 
 	{
-		++OPv_counter;
-		if(OPv_counter%100 == 0) { printf(" %li", OPv_counter); fflush(stdout); }
-		Eigen::Map<Eigen::Matrix<T,Eigen::Dynamic,1> > E_v(v,A.rows());
-		Eigen::Map<Eigen::Matrix<T,Eigen::Dynamic,1> > E_w(w,A.rows());
-		E_w = OP_solver.solve(E_v);
+		Eigen::Map<const EVector> Ev(v,A.rows());
+		Eigen::Map<const EVector> Ew(w,A.rows());
+		return MultvMw(Ev,Ew);
 	}
 
-	void clear_eigenstuff()
+	void ClearEigenstuff()
 	{
 		if(Eigenvalues != NULL)
 			delete[] Eigenvalues;
@@ -176,12 +201,15 @@ public:
 	};
 
 	void Diagonalize();
-//	void Diagonalize_shift_and_invert(T sig = (T)0.);
-	void HumanReport(int num_print = 30) const;
-//	void get_residuals(int nconv, T const *evals, T const *evecs, T *&residuals) const;
-	void CalculateResidule(T *res) const;
+	void Diagonalize(int _num_request);
+	void VDiagonalize();
+	void VDiagonalize(int _num_request);
+
+	void Report(int num_print = 30) const;
+	void CalculateResidual(EVector &Residual) const;
 
 	void LUdecomp();
+	void solve_Mx_equals_b(EVector &X, EVector &B);
 	void solve_Mx_equals_b(T *x, T const *b);
 
 //	void save_matrix_nc(char *filename);
@@ -192,24 +220,23 @@ public:
 template<typename T>
 void MatrixInterface<T>::Diagonalize()
 {
-	clear_eigenstuff();
+	ClearEigenstuff();
 
 	std::cout << "Begin Diagonalization..." << std::endl;
 	time_t start,end;
 	time(&start);
 	Mv_counter = 0;
-	std::cout << "calls to MultDv:" << std::endl;
+	std::cout << "calls to MultMv:" << std::endl;
 	fflush(stdout);
 
-	if(num_request <= 0) num_request = A.rows()-1;
-	else
-		num_request=std::min(A.rows()-1, num_request);
+	if(num_request <= 0)	num_request	= A.rows()-1;
+	else					num_request	= std::min(A.rows()-1, num_request);
 	Eigenvalues = new T[num_request];
 	if(compute_vecs)
 		Eigenvectors = new T[num_request*A.rows()];
 
 	ARWrapper<T> Wrapper;
-	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultDv,(char*)ARWrapper<T>::which.c_str());
+	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMv_ARPACK,(char*)ARWrapper<T>::which.c_str());
 	if(compute_vecs)
 		num_converged = Wrapper.Solver.EigenValVectors(Eigenvectors,Eigenvalues);
 	else
@@ -220,16 +247,37 @@ void MatrixInterface<T>::Diagonalize()
 	diagonalization_time = difftime(end,start);
 	num_Mv_calls = Mv_counter;
 
-//	if(verbose_diagonalize)
-//		eigenvalue_report();
+	if(verbose_diagonalize)
+		Report();
 };
+
+template<typename T>
+void MatrixInterface<T>::Diagonalize(int _num_request)
+{
+	num_request = _num_request;
+	Diagonalize();
+}
+
+template<typename T>
+void MatrixInterface<T>::VDiagonalize()
+{
+	verbose_diagonalize = true;
+	Diagonalize();
+}
+
+template<typename T>
+void MatrixInterface<T>::VDiagonalize(int _num_request)
+{
+	verbose_diagonalize = true;
+	Diagonalize(_num_request);
+}
 
 
 /*
 template<typename T>
 void MatrixInterface<T>::Diagonalize_shift_and_invert(T sigma)
 {
-	clear_eigenstuff();
+	ClearEigenstuff();
 
 	std::cout << "Begin Diagonalization..." << std::endl;
 	time_t start,end;
@@ -252,7 +300,7 @@ void MatrixInterface<T>::Diagonalize_shift_and_invert(T sigma)
 //	OP_solver.compute(OPinv);
 	ARWrapper<T,EMatrix> Wrapper;
 //	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultOPv,(char*)ARWrapper<T,EMatrix>::which2.c_str());
-	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultDv,(char*)ARWrapper<T,EMatrix>::which.c_str());
+	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMv,(char*)ARWrapper<T,EMatrix>::which.c_str());
 	Wrapper.Solver.ChangeShift(sigma);
 	if(compute_vecs)
 		num_converged = Wrapper.Solver.EigenValVectors(Eigenvectors,Eigenvalues);
@@ -273,8 +321,10 @@ void MatrixInterface<T>::Diagonalize_shift_and_invert(T sigma)
 */
 
 template<typename T>
-void MatrixInterface<T>::HumanReport(int num_print) const
+void MatrixInterface<T>::Report(int num_print) const
 {
+	if(num_print < 0)
+		num_print = num_converged;
 	std::cout << "\nGenerating eigenvalue report..." << std::endl;
 
 //	std::cout << "\tUsing ARPACK++ class ARSymStdEig" << std::endl;
@@ -283,16 +333,16 @@ void MatrixInterface<T>::HumanReport(int num_print) const
 	std::cout << "\tNumber of 'requested' eigenvalues   : " << num_request			<< std::endl;
 	std::cout << "\tNumber of 'converged' eigenvalues   : " << num_converged		<< std::endl;
 	std::cout << "\tSeconds to diagonalize              : " << diagonalization_time	<< std::endl;
-	std::cout << "\tNumber of calls to MultMv           : " << num_Mv_calls			<< std::endl << std::endl;
+	std::cout << "\tNumber of calls to MultMv_ARPACK    : " << num_Mv_calls			<< std::endl << std::endl;
 
-	num_print = std::min(num_print, num_converged);
-	printf("     i:         eigenvalue\n");
-	for(int i=0; i<num_print; ++i)
-		printf("%6i:  % e \n", i, Eigenvalues[i]);
-};
-	
+	EVector Residual;
+	CalculateResidual(Residual);
+
+	PrintEigenvalues(Eigenvalues, Residual, std::min(num_print,num_converged), num_converged);
+}
+
 template<typename T>
-void MatrixInterface<T>::CalculateResidule(T *res) const
+void MatrixInterface<T>::CalculateResidual(EVector &Residual) const
 {
 	if(!compute_vecs)
 	{
@@ -300,24 +350,13 @@ void MatrixInterface<T>::CalculateResidule(T *res) const
 		return;
 	}
 
-	dbl rv, rw, iv, iw;
 	const int Nvar = A.rows();
-	std::complex<dbl> w[Nvar];
-
+	Residual = EVector::Zero(Nvar);
 	for(int i=0; i<num_converged; ++i)
 	{
-		//  dbl *evec = modesAll[i].vec;
-		cMultDv(&Eigenvectors[Nvar*i], w);
-		std::complex<dbl> lambda(0., 0.);
-		for(int j=0; j<Nvar; ++j)
-		{   
-			rv = std::real(Eigenvectors[Nvar*i+j]);
-			iv = std::imag(Eigenvectors[Nvar*i+j]);
-			rw = std::real(w[j]);
-			iw = std::imag(w[j]);
-			lambda += std::complex<dbl>(rv*rw+iv*iw, rv*iw-iv*rw);
-		}
-		res[i] = lambda - Eigenvalues[i];
+		Eigen::Map<const EVector> Evec(&Eigenvectors[Nvar*i], Nvar);
+		T eMe = MultvMw(Evec, Evec);
+		Residual[i] = eMe - Eigenvalues[i];
 	}
 }
 
@@ -333,12 +372,17 @@ void MatrixInterface<T>::LUdecomp()
 }
 
 template<typename T>
+void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector &B)
+{
+	X = UMFsolver.solve(B);
+}
+
+template<typename T>
 void MatrixInterface<T>::solve_Mx_equals_b(T *x, T const *b)
 {
-	typedef Eigen::Matrix<T, Eigen::Dynamic, 1> VEC;
-	Eigen::Map<      VEC> X(&x[0], A.rows());
-	Eigen::Map<const VEC> B(&b[0], A.rows());
-	X = UMFsolver.solve(B);
+	Eigen::Map<      EVector> X(&x[0], A.rows());
+	Eigen::Map<const EVector> B(&b[0], A.rows());
+	solve_Mx_equals_b(X,B);
 }
 
 

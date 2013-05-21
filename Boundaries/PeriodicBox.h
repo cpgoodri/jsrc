@@ -22,7 +22,7 @@
 
 #include "../Resources/std_include.h"
 #include "../Resources/MersenneTwister.h"
-#include "Box.h"
+#include "BaseBox.h"
 #include <map>
 #include <string>
 
@@ -53,10 +53,9 @@ public:
 	
 	const CPeriodicBox<Dim,NonPeriodicDim> &operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box);
 
-//functions to write box configurations
-	string DataToString();
-	
-//functions to read box configurations
+//functions to read and write box configurations
+	static string GetName();
+	string DataToString() const;
  	void StringToData(string Data);
  	CBox<Dim> *Create();
 	
@@ -111,24 +110,34 @@ const CPeriodicBox<Dim,NonPeriodicDim> &CPeriodicBox<Dim,NonPeriodicDim>::operat
 	return *this;
 }
 
-//functions to write box configurations
+//functions to read and write box configurations
 template <int Dim, int NonPeriodicDim>
-string CPeriodicBox<Dim,NonPeriodicDim>::DataToString()
+string CPeriodicBox<Dim,NonPeriodicDim>::GetName()
 {
-	return "PeriodicBox";
+	stringstream name;
+	name << "PeriodicBox_" << Dim << "D_" << NonPeriodicDim << "NonPDim";
+	return name.str();
 }
 	
-//functions to read box configurations
+template <int Dim, int NonPeriodicDim>
+string CPeriodicBox<Dim,NonPeriodicDim>::DataToString() const
+{
+	stringstream ss;
+	ss << GetName() << ":" << CBox<Dim>::BoxSymmetry;
+	return ss.str();
+}
+	
 template <int Dim, int NonPeriodicDim>
 void CPeriodicBox<Dim,NonPeriodicDim>::StringToData(string Data)
 {
-
+	vector<string> split = SplitString(Data,":");
+	CBox<Dim>::BoxSymmetry = atoi(split[1].c_str());
 }
 
 template <int Dim, int NonPeriodicDim>
 CBox<Dim> *CPeriodicBox<Dim,NonPeriodicDim>::Create()
 {
-	return new CPeriodicBox<Dim>();
+	return new CPeriodicBox<Dim,NonPeriodicDim>();
 }
 
 
@@ -173,14 +182,14 @@ public:
 
 //functions involving the boundary
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements) const
+inline void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticles(Eigen::VectorXd &Points,const Eigen::VectorXd &Displacements) const
 {
 	Points += Displacements;
 	PeriodicBCs<Dim,NonPeriodicDim>::apply_vector(Points);
 }
 
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const &Displacement) const
+inline void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const &Displacement) const
 {
 	Point += Displacement;
 	PeriodicBCs<Dim,NonPeriodicDim>::apply_particle(Point);
@@ -195,7 +204,7 @@ void CPeriodicBox<Dim,NonPeriodicDim>::MoveParticle(dvecBlock Point, dvec const 
 //
 //I'm not sure if this will work with free boundary conditions
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvec &PointA,const dvec &PointB, dvec &Displacement) const
+inline void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvec &PointA,const dvec &PointB, dvec &Displacement) const
 {
 	Displacement = PointA-PointB;
 	for(int i = NonPeriodicDim ; i < Dim ; i++)
@@ -204,7 +213,7 @@ void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvec &PointA,co
 }
 
 template <int Dim, int NonPeriodicDim>
-void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvecBlock &PointA,const dvecBlock &PointB, dvec &Displacement) const
+inline void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvecBlock &PointA,const dvecBlock &PointB, dvec &Displacement) const
 {
 	Displacement = PointA-PointB;
 	for(int i = NonPeriodicDim ; i < Dim ; i++)

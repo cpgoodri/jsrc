@@ -42,7 +42,7 @@
 
 #include "../Resources/std_include.h"
 #include "../Potentials/Potentials.h"
-#include "../Boundaries/Box.h"
+#include "../Boundaries/Boxes.h"
 //#include "../Resources/MersenneTwister.h"
 
 

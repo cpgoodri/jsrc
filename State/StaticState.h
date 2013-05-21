@@ -49,7 +49,7 @@
 
 #include "../Resources/std_include.h"
 #include "../Potentials/Potentials.h" //This loads all the potentials
-#include "../Boundaries/Box.h"
+#include "../Boundaries/Boxes.h"
 #include "../Boundaries/PeriodicBox.h"
 #include "netcdfcpp.h"
 #include "../Resources/MersenneTwister.h"
@@ -98,9 +98,20 @@ public:
 //Functions to construct systems 
 	void RandomizePositions(long seed = 1);
 	void RandomizePositions(MTRand *random);
-	void Read(const NcFile &File,int Record);
+//Set 2d lattices
+	void SetSquareLattice();
+	void SetSquareLattice(int Lx, int Ly);
+	void SetHexLattice();
+//Set 3d lattices
+	void SetFCCLattice();
+	void SetBCCLattice();
+
+	void SetRadiiMono();										//!<Set all diameters to 1.
+	void SetRadiiBi(dbl FracSmall = 0.5, dbl SizeRatio = 1.4);	//!<Frac small is the fraction of small particles, SizeRatio is the ratio of largest radii to the smallest.
+	void SetRadiiPolyUniform(dbl SizeRatio = 1.4);				//!<SizeRatio is the ratio of the largest to the smallest.
 	
-//Functions to write systems
+//Functions to read and write systems
+	void Read(const NcFile &File,int Record);
 	void Write(NcFile &File,int Record);
 
 //Functions to set properties of the system
@@ -255,6 +266,89 @@ void CStaticState<Dim>::RandomizePositions(long seed)
 	delete random;
 }
 
+template<int Dim>
+void CStaticState<Dim>::SetSquareLattice()
+{
+	int L;
+	IsPerfectRoot(N,Dim,L);
+	if(POW2(L)!=N)
+	{
+		printf("ERROR: L^2 != N, with L=%i, N=%i is not a perfect root\n", L, N);
+		assert(false);
+	}
+	
+	SetSquareLattice(L,L);
+}
+
+template<int Dim>
+void CStaticState<Dim>::SetSquareLattice(int Lx, int Ly)
+{
+	assert(Lx*Ly==N);
+	if(Dim!=2)
+	{
+		printf("ERROR: can only set a square lattice when Dim = 2\n");
+		assert(false);
+	}
+
+	dvec spacing;
+	dvec offset;
+	spacing[0] = 1./((dbl)Lx);
+	spacing[1] = 1./((dbl)Ly);
+	for(int dd=0; dd<Dim; ++dd) offset[dd] = 0.25*spacing[dd];
+
+	int ii;
+	for(int y=0; y<Ly; ++y) 
+		for(int x=0; x<Lx; ++x) 
+		{    
+			ii = Lx*y+x;
+			Positions(Dim*ii  ) = spacing[0]*((dbl)x) + offset[0];
+			Positions(Dim*ii+1) = spacing[1]*((dbl)y) + offset[1];
+		}
+}
+
+
+template <int Dim>
+void CStaticState<Dim>::SetRadiiMono()
+{
+	const dbl sigma = 1.;
+	Radii = VectorXd::Constant(N, sigma/2.);
+}
+
+template <int Dim>
+void CStaticState<Dim>::SetRadiiBi(dbl FracSmall, dbl SizeRatio)
+{
+	const dbl sigma = 1.;
+	assert(Radii.size() == N);
+	int Nsmall = FracSmall*N;
+	dbl size1 = 1.;
+	dbl size2 = SizeRatio;
+	dbl avgD = 2.*(Nsmall*size1 + (N-Nsmall)*size2)/((dbl)N);
+	size1*=sigma/avgD;
+	size2*=sigma/avgD;
+
+	for(int i=0; i<Nsmall; ++i)
+		Radii[i] = size1;
+	for(int i=Nsmall; i<N; ++i)
+		Radii[i] = size2;
+}
+
+template <int Dim>
+void CStaticState<Dim>::SetRadiiPolyUniform(dbl SizeRatio)
+{
+	const dbl sigma = 1.;
+	dbl RelSize;
+	for(int i=0; i<N; ++i)
+	{
+		RelSize = ((dbl)1.) + (((dbl)i)/((dbl)(N-1)))*SizeRatio;
+		Radii[i] = RelSize;
+	}
+	dbl avgD = 2.*Radii.mean();
+	Radii *= sigma/avgD;
+}
+
+
+
+
 //Read a system from a netcdf file.
 template <int Dim>
 void CStaticState<Dim>::Read(const NcFile &File,int Record)
@@ -291,7 +385,7 @@ void CStaticState<Dim>::Read(const NcFile &File,int Record)
 	Potential = CPotential::Read(File,Record);
 
 }
-	
+
 //Functions to write systems
 template <int Dim>
 void CStaticState<Dim>::Write(NcFile &File,int Record)
@@ -572,13 +666,17 @@ void CStaticState<Dim>::PrintParticles() const
 {
 	Eigen::VectorXd RealPos = Positions;
 	Box->Transform(RealPos);
+	printf("Printing %i particles:\n", N);
 	for(int i=0; i<N; ++i)
 	{
-		printf("sphere:% 5i   Position: ", i); 
+		printf("  sphere:% 5i   Position: ", i); 
 		for(int dd=0; dd<Dim; dd++) printf("% 20.14f  ", RealPos[Dim*i+dd]);
 		printf("  Radius: %16.14f", Radii[i]);
 		printf("\n");
 	}
+	dmat Trans;
+	Box->GetTransformation(Trans);
+	cout << "Transformtion matrix:\n" << Trans << endl;
 }
 
 }

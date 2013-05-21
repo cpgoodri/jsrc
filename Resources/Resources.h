@@ -46,7 +46,51 @@ inline T max_abs_element(int N, T const *const a)
 	for(int ii=1; ii<N; ii++)   if(fabs(a[ii])>m)   m=fabs(a[ii]);
 	return m;
 }
+template <typename T>
+inline T max_abs_element(Eigen::Matrix<T,Eigen::Dynamic,1> const &a)
+{
+	return max_abs_element(a.size(), a.data());
+}
 
+template <class ForwardIterator>
+inline dbl mean(ForwardIterator first, ForwardIterator last)
+{
+	dbl m = (dbl)(*first);
+	int Ndata = 1;
+	while(++first!=last)
+	{
+		++Ndata;
+		m += ( ((dbl)(*first))-m )/((dbl)Ndata);
+	}
+	return m;
+}
+
+
+
+
+//returns true if there exists an integer x such that x^pow == n
+//the return value of x is 1 if the return value is false or if pow == 0;
+inline bool IsPerfectRoot(int n, int power, int &x) 
+{
+	x=1;
+	if(power<0) return false;
+	if(power==0) return n==1;
+	if(power%2==0 && n<0) return false;
+	
+	x = round( pow(((dbl)n),1./((dbl)power)) );
+	int xpow(1);
+	for(int i=0; i<power; ++i)
+		xpow *= x;
+	if(xpow==n)
+		return true;
+	x=1;
+	return false;
+}
+inline bool IsPerfectRoot(int n, int power)
+{
+	int x;
+	return IsPerfectRoot(n, power, x); 
+}
 
 
 
@@ -74,6 +118,12 @@ inline bool FileExists(std::string strFilename)
 	}
 	return(blnReturn);
 }
+
+
+
+
+
+
 
 
 

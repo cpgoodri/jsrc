@@ -42,12 +42,13 @@
 
 #include "../Resources/std_include.h"
 #include "../Potentials/Potentials.h"
-#include "../Boundaries/Box.h"
+#include "../Boundaries/Boxes.h"
 #include "../Resources/MersenneTwister.h"
 #include "../State/StaticState.h"
 #include "BaseComputer.h"
 #include "BondList.h"
 #include "Grid.h"
+#include "Data.h"
 #include <list>
 
 
@@ -74,6 +75,10 @@ private:
 	CGrid<Dim> Grid;
 
 public:
+	CBondList<Dim> Bonds;	//!<Bond list for standard computations
+	index_map RattlerMap;	//!<Map for rattlers.
+	CStdData<Dim>  Data;	//!<storage for standard data
+
 	CStaticComputer();
 	CStaticComputer(CStaticState<Dim> &_State);
 	CStaticComputer(const CStaticComputer<Dim> &_Copy);
@@ -91,6 +96,18 @@ public:
 	void ComputeBondList(CBondList<Dim> &bonds);
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 
+	void StdPrepareSystem();
+	void CalculateStdData(bool CalcCijkl = true, bool CalcHess = true);
+	void CalculateStdData(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
+	void CalculateStdData_Unstressed(bool CalcCijkl=true, bool CalcHess = true);
+	void CalculateStdData_Unstressed(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
+
+	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const;
+	void ComputeHessian(CBondList<Dim> const &bonds, Eigen::SparseMatrix<dbl> &hess) const;
+	void ComputeHessianBZ(Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
+	void ComputeHessianBZ(CBondList<Dim> const &bonds, Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
+
+/*
 //Compute the energy of the system
     dbl ComputeEnergy();
     
@@ -104,14 +121,26 @@ public:
 //Dynamical Matrix Stuff (all done in mass-normalized coordinates)
 //computes at q = 0
 	void ComputeDynamicalMatrix(Eigen::MatrixXd &tar);
-    
+*/
+
 //Needed for minimization routines
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
 	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
 	void Move(Eigen::VectorXd const &step);
 	dbl GetMinimizationTimeScale() const;
     
+
+	void CalculateBZTransformation(Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
+	void CalculateBZTransformation(CBondList<Dim> const &bonds, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
 };
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////   IMPLEMENTATION    //////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 
 template <int Dim>
 CStaticComputer<Dim>::CStaticComputer()
@@ -177,7 +206,6 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 	dbl sigma, rlen, rlen2, E, g, k;
 	for(int i = 0 ; i < State.GetParticleNumber() ; i++)
 	{
-//		typename CGrid<Dim>::iterator it2 = Grid.GetParticleIterator(i);
 		for(typename CGrid<Dim>::iterator it = Grid.GetParticleIterator(i) ; (*it)!=-1 ; it++) //(*it) is the particle index of a potential neighbor
 		{
 			if((*it)>i)
@@ -189,7 +217,8 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 				{
 					rlen = sqrt(rlen2);
 					State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
-					bonds.AddBond( CBond<Dim>(i, (*it), sigma, rlen, E, g, k, Displacement) );
+					bonds.AddBond( CBond<Dim>(i, (*it), rlen, E, g, k, Displacement) );
+					//bonds.AddBond( CBond<Dim>(i, (*it), sigma, rlen, E, g, k, Displacement) );
 				}
 			}
 		}
@@ -214,12 +243,66 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 			{
 				rlen = sqrt(rlen2);
 				State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
-				bonds.AddBond( CBond<Dim>(i, j, sigma, rlen, E, g, k, Displacement) );
+				bonds.AddBond( CBond<Dim>(i, j, rlen, E, g, k, Displacement) );
+				//bonds.AddBond( CBond<Dim>(i, j, sigma, rlen, E, g, k, Displacement) );
 			}
 		}
 	//bonds.Volume = 0.;
 	bonds.SetVolume(GetVolume());
 }
+
+
+
+
+
+
+
+
+
+
+template <int Dim>
+void CStaticComputer<Dim>::StdPrepareSystem()
+{
+	ComputeBondList(Bonds);				//Use the member variable derived from CBaseComputer
+	Bonds.RemoveRattlers(RattlerMap);	//Remove rattlers
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::CalculateStdData(bool CalcCijkl, bool CalcHess)
+{
+	CalculateStdData(Data,CalcCijkl,CalcHess);
+}
+template <int Dim>
+void CStaticComputer<Dim>::CalculateStdData(CStdData<Dim> &data, bool CalcCijkl, bool CalcHess)
+{
+	Bonds.CalculateStdData(data, CalcCijkl,CalcHess);
+}
+
+
+template <int Dim>
+void CStaticComputer<Dim>::CalculateStdData_Unstressed(bool CalcCijkl, bool CalcHess)
+{
+	CalculateStdData_Unstressed(Data,CalcCijkl,CalcHess);
+}
+
+
+template <int Dim>
+void CStaticComputer<Dim>::CalculateStdData_Unstressed(CStdData<Dim> &data, bool CalcCijkl, bool CalcHess)
+{
+	CBondList<Dim> BondsTemp = Bonds;
+	BondsTemp.MakeUnstressed();
+	BondsTemp.CalculateStdData(data,CalcCijkl,CalcHess);
+}
+
+
+
+
+
+
+
+
+
+
 
 //Needed for minimization routines
 template <int Dim>
@@ -255,6 +338,62 @@ inline void CStaticComputer<Dim>::Move(Eigen::VectorXd const &step)
 
 
 
+
+
+
+
+template <int Dim>
+void CStaticComputer<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const
+{
+	ComputeHessian(Bonds, hess);
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::ComputeHessian(CBondList<Dim> const &bonds, Eigen::SparseMatrix<dbl> &hess) const
+{
+	bonds.ComputeHessian(hess);
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::ComputeHessianBZ(Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const
+{
+	ComputeHessianBZ(Bonds, hess, transformation, k);
+}
+template <int Dim>
+void CStaticComputer<Dim>::ComputeHessianBZ(CBondList<Dim> const &bonds, Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const
+{
+	CalculateBZTransformation(bonds, transformation, k);
+	Eigen::SparseMatrix<dbl> H0;
+	ComputeHessian(bonds, H0);
+	printf("transformation -> %i %i\n", transformation.rows(), transformation.cols());
+	printf("H0             -> %i %i\n", H0.rows(), H0.cols());
+	hess = transformation.adjoint() * H0 * transformation;
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::CalculateBZTransformation(Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const
+{
+	CalculateBZTransformation(Bonds, transformation, k);
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::CalculateBZTransformation(CBondList<Dim> const &bonds, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const
+{
+	//Get the real positions
+	Eigen::VectorXd RealPos;
+	State.GetPositions(RealPos);
+
+	//Remove Positions corresponding to rattlers
+	Eigen::VectorXd RealPosNoRatt = Eigen::VectorXd::Zero(Dim*RattlerMap.size());
+	for(int im=0; im<RattlerMap.size(); ++im)
+		RealPosNoRatt.segment<Dim>(Dim*im) = RealPos.segment<Dim>(Dim*RattlerMap[im]);
+	bonds.PlaneWaveAnsatz(transformation, RealPosNoRatt, k);
+}
+
+
+
+
+/*
 //Compute the energy of the system
 template <int Dim>
 dbl CStaticComputer<Dim>::ComputeEnergy()
@@ -435,7 +574,7 @@ void CStaticComputer<Dim>::ComputeDynamicalMatrix(Eigen::MatrixXd &tar)
 		}
 	}
 }
-    
+    */
 
 }
 

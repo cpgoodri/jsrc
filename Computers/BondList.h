@@ -6,6 +6,9 @@
 #include <Eigen/Sparse>
 #include "Bond.h"
 #include "Neighbors.h"
+#include "MatrixInterface.h"
+#include "cijkl.h"
+#include "Data.h"
 
 namespace LiuJamming
 {
@@ -23,13 +26,14 @@ class CBondList
 	typedef Eigen::Matrix<dbl, Dim, 1> dvec;
 	typedef Eigen::Matrix<dbl, Dim, Dim> dmat;
 	typedef CBond<Dim> BOND;
-	typedef Eigen::Triplet<cdbl> TRIP;
+	typedef Eigen::Triplet< dbl>  TRIP;
+	typedef Eigen::Triplet<cdbl> cTRIP;
 
 //! @name Storage Variables
 ///@{
 	int N;						//!<Number of possible nodes.
 	dbl Volume;					//!<Volume containing the bonds.
-	vector<BOND> list;		//!<A list of the bonds.
+	vector<BOND> list;			//!<A list of the bonds.
 
 ///@}
 
@@ -64,25 +68,46 @@ public:
 	void RemoveRattlers(int c=Dim+1, bool Verbose=false); //!<Remove rattlers, i.e. nodes with less than c bonds
 	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false); //!< Remove rattlers, and return the corresponding index_map.
 
+	void MakeUnstressed();				//!<Remove the prestress form every bond.
+	void MultiplyForces(dbl m);			//!<Multiply all forces by a constant.
+	void MultiplyStiffnesses(dbl m);	//!<Multiply all spring constants by a constant.
+
 ///@}
 
 //! @name Computations
 ///@{
 	dbl  ComputeEnergy() const;							//!<Compute the energy.
 	dbl  ComputePressure() const;						//!<Compute the pressure.
+	dbl  ComputePressure(dmat &stress) const;			//!<Compute the pressure.
 	void ComputeStressTensor(dmat &stress) const;		//!<Compute the Dim by Dim stress tensor.
-//	void ComputeData(CSimpleData &data) const;
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const;	//!<Compute the Dim*N dimensional energy gradient (i.e. -Fnet), and return the energy.
-	void ComputeHessianElements(vector<TRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;	//!<Compute the elements of the hessian as a list.
+
+	void ComputeHessianElements(vector<TRIP> &coefficients, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;				//!<Compute the elements of the hessian as a list.
+	void PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const;
+	//void ComputeHessianElements(vector<cTRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;	//!<Compute the elements of the hessian as a list.
 	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;					//!<Compute the hessian, note: the hessian is NOT mass-normalized.
 	void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;		//!<Compute the hessian at non-zero wavevector k, note: the hessian is NOT mass-normalized.
 
+	//void ComputeEquilibriumMatrixElements(vector<cTRIP> &coefficients, dvec k) const;
+	void ComputeEquilibriumMatrix   (Eigen::SparseMatrix<dbl> &Amatrix) const;
+	//void ComputeEquilibriumMatrix_BZ(Eigen::SparseMatrix<dbl> &Amatrix, dvec k) const;
+
+	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
+
+	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
+
+private:
+	void Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &AffineDeltaR, dbl unstress_coeff, dbl stress_coeff) const;
+	dbl  CalculateEnergyChange(Eigen::VectorXd const &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const;
+
+public:
 
 //! @name Misc.
 ///@{
-	bool CheckConsistency() const;	//!<Check that the i and j index of every bond is less than N and greater than or equal to 0.
-	void PrintBonds() const;		//!<Print the bond list to stdout.
+	bool CheckConsistency() const;				//!<Check that the i and j index of every bond is less than N and greater than or equal to 0.
+	void PrintBonds() const;					//!<Print the bond list to stdout.
+	void PrintBonds_txt(char *filename) const;	//!<Print the bond list to a text file
 
 ///@}
 };
@@ -108,15 +133,14 @@ CBondList<Dim>::CBondList<Dim>(const CBondList &src)
 	(*this) = src; 
 }
 
-/**
- *	WARNING: this method is not yet implemented!
- */
 template<int Dim>
 CBondList<Dim> &CBondList<Dim>::operator=(const CBondList<Dim> &src)
 {
-	if(this != src)
+	if(this != &src)
 	{
-		printf("THIS NEEDS TO BE IMPLEMENTED!!!\n");
+		N = src.N;
+		Volume = src.Volume;
+		list = src.list;
 	}
 	return *this;
 }
@@ -348,6 +372,26 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 }
 
 template<int Dim>
+void CBondList<Dim>::MakeUnstressed()
+{
+	MultiplyForces(0.);
+}
+
+template<int Dim>
+void CBondList<Dim>::MultiplyForces(dbl m)
+{
+	for(typename vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
+		b->g *= m;
+}
+
+template<int Dim>
+void CBondList<Dim>::MultiplyStiffnesses(dbl m)
+{
+	for(typename vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
+		b->k *= m;
+}
+
+template<int Dim>
 dbl  CBondList<Dim>::ComputeEnergy() const
 {
 	dbl energy=0.;
@@ -361,6 +405,12 @@ dbl  CBondList<Dim>::ComputePressure() const
 {
 	dmat stress;
 	ComputeStressTensor(stress);
+	return ComputePressure(stress);
+}
+
+template<int Dim>
+dbl  CBondList<Dim>::ComputePressure(dmat &stress) const
+{
 	return -stress.trace()/((dbl)Dim);
 }
 
@@ -396,7 +446,66 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 }
 
 template<int Dim>
-void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
+void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
+{
+	dmat Fii, Fjj, Fij; //Fji = Fij.transpoze(); stressed block
+	dmat Kii, Kjj, Kij; //Kji = Kij.transpose(); unstressed block
+	dmat Bii, Bjj, Bij; //Bji = Bij.transpose(); B = unstress_coeff*K + stress_coeff*F
+
+	int icorner, jcorner;
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	{
+		//Calculate the matrix blocks
+		b->CalculateMatrixBlocks(Fij,Kij); // equal to: (*b).CalculateMatrixBlocks(Fij,Kij);
+		Fii = Fjj = -Fij;
+		Kii = Kjj = -Kij;
+
+		Bii = unstress_coeff*Kii + stress_coeff*Fii;
+		Bjj = unstress_coeff*Kjj + stress_coeff*Fjj;
+		Bij = unstress_coeff*Kij + stress_coeff*Fij;
+
+		//Add the matrix blocks to the list of coefficients
+		icorner = Dim*b->i;
+		jcorner = Dim*b->j;
+		for(int d1=0; d1<Dim; ++d1)
+			for(int d2=0; d2<Dim; ++d2)
+			{
+				coefficients.push_back( TRIP(icorner+d1, icorner+d2, Bii(d1,d2)) );
+				coefficients.push_back( TRIP(jcorner+d1, jcorner+d2, Bjj(d1,d2)) );
+				coefficients.push_back( TRIP(icorner+d1, jcorner+d2, Bij(d1,d2)) );
+				coefficients.push_back( TRIP(jcorner+d1, icorner+d2, (Bij.transpose())(d1,d2)) );
+			}
+	}
+	
+	//add the tether
+	for(int ii=0; ii<Dim*N; ++ii)
+		coefficients.push_back( TRIP(ii, ii, tether) );
+}
+
+template<int Dim>
+void CBondList<Dim>::PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const
+{
+	vector<cTRIP> coefficients;
+	dbl kdotR;
+	cdbl eikdotR;
+
+	for(int i=0; i<Positions.size()/Dim; ++i)
+	{
+		kdotR = k.dot(Positions.segment<Dim>(Dim*i));
+		eikdotR = cdbl(cos(kdotR), sin(kdotR));
+		for(int dd=0; dd<Dim; ++dd)
+			coefficients.push_back( cTRIP( Dim*i+dd, Dim*i+dd, eikdotR) );
+	}
+
+	Eigen::SparseMatrix<cdbl> temp(Positions.size(),Positions.size());
+	transformation = temp;
+	transformation.setFromTriplets(coefficients.begin(), coefficients.end());
+	assert(transformation.isCompressed());
+}
+
+/*
+template<int Dim>
+void CBondList<Dim>::ComputeHessianElements(vector<cTRIP> &coefficients, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
 	dmat Fii, Fjj, Fij; //Fji = Fij.transpoze(); stressed block
 	dmat Kii, Kjj, Kij; //Kji = Kij.transpose(); unstressed block
@@ -426,18 +535,18 @@ void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dvec k, 
 		for(int d1=0; d1<Dim; ++d1)
 			for(int d2=0; d2<Dim; ++d2)
 			{
-				coefficients.push_back( TRIP(icorner+d1, icorner+d2, Bii(d1,d2)) );
-				coefficients.push_back( TRIP(jcorner+d1, jcorner+d2, Bjj(d1,d2)) );
-				coefficients.push_back( TRIP(icorner+d1, jcorner+d2, eikdotr*Bij(d1,d2)) );
-				coefficients.push_back( TRIP(jcorner+d1, icorner+d2, std::conj(eikdotr)*(Bij.transpose())(d1,d2)) );
+				coefficients.push_back( cTRIP(icorner+d1, icorner+d2, Bii(d1,d2)) );
+				coefficients.push_back( cTRIP(jcorner+d1, jcorner+d2, Bjj(d1,d2)) );
+				coefficients.push_back( cTRIP(icorner+d1, jcorner+d2, eikdotr*Bij(d1,d2)) );
+				coefficients.push_back( cTRIP(jcorner+d1, icorner+d2, std::conj(eikdotr)*(Bij.transpose())(d1,d2)) );
 			}
 	}
 	
 	//add the tether
 	for(int ii=0; ii<Dim*N; ++ii)
-		coefficients.push_back( TRIP(ii, ii, cdbl(tether,0)) );
+		coefficients.push_back( cTRIP(ii, ii, cdbl(tether,0)) );
 }
-
+*/
 
 /**
  *	This is the primary method for calculating the hessian, which is returned as an Eigen::SparseMatrix<dbl> through the parameter hess.
@@ -453,17 +562,12 @@ void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress
 {
 	//First, compute the complex matrix elements with k=0
 	vector<TRIP> coeffs;
-	dvec k = dvec::Zero();
-	ComputeHessianElements(coeffs, k, unstress_coeff, stress_coeff, tether);
+	ComputeHessianElements(coeffs, unstress_coeff, stress_coeff, tether);
 	
 	//Create a temporary complex matrix
-//	Eigen::SparseMatrix<cdbl> hess_temp;
-	Eigen::SparseMatrix<cdbl> hess_temp(Dim*N,Dim*N);
-	hess_temp.setFromTriplets(coeffs.begin(), coeffs.end());
-
-	//Now, copy the real part to hess
-	hess.setZero();
-	hess = hess_temp.real();
+	Eigen::SparseMatrix<dbl> temp(Dim*N,Dim*N);
+	hess = temp;
+	hess.setFromTriplets(coeffs.begin(), coeffs.end());
 	assert(hess.isCompressed());
 }
 
@@ -477,10 +581,11 @@ void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress
  *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
  *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
  */
+/*
 template<int Dim>
 void CBondList<Dim>::ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
-	vector<TRIP> coeffs;
+	vector<cTRIP> coeffs;
 	ComputeHessianElements(coeffs, k, unstress_coeff, stress_coeff, tether);
 
 	Eigen::SparseMatrix<cdbl> temp(Dim*N,Dim*N);
@@ -489,6 +594,186 @@ void CBondList<Dim>::ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, 
 	hess.setFromTriplets(coeffs.begin(), coeffs.end());
 	assert(hess.isCompressed());
 }
+*/
+
+template<int Dim>
+void CBondList<Dim>::ComputeEquilibriumMatrix(Eigen::SparseMatrix<dbl> &Amatrix) const
+{
+	vector<TRIP> coefficients;
+	dbl temp;
+	for(int bi=0; bi<(int)list.size(); ++bi)
+	{
+		BOND const &b = list[bi];
+		for(int dd=0; dd<Dim; ++dd)
+		{   
+			temp = b.r[dd]/b.drlen;
+			coefficients.push_back( TRIP(Dim*b.i+dd, bi, -temp) );
+			coefficients.push_back( TRIP(Dim*b.j+dd, bi,  temp) );
+		}   
+	}
+
+	Amatrix = Eigen::SparseMatrix(Dim*N,(int)list.size());
+	Amatrix.setFromTriplets(coefficients.begin(), coefficients.end());
+	assert(Amatrix.isCompressed());
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ *	This method does 2 things.
+ *		1. It calculates the affine extension induced on each bond from the stratin tensor.
+ *		2. It calculates the induced force on each particle from the straint tensor.
+ */
+template<int Dim>
+void CBondList<Dim>::Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &AffineDeltaR, dbl unstress_coeff, dbl stress_coeff) const
+{
+	assert(AffineDeltaR.size() == Dim*list.size());
+	n_d2Udvdgamma = Eigen::VectorXd::Zero(Dim*N);
+
+	//Calculate the net force on each node
+	int i,j;
+	dbl g, k, DeltaRparallel;
+	dvec D2i;
+	for(int bi=0; bi<(int)list.size(); ++bi)
+	{
+		BOND const &b = list[bi];
+		g = b.g*stress_coeff;
+		k = b.k*unstress_coeff;
+
+		//Calculate the affine extension of the bond.
+		AffineDeltaR.segment<Dim>(Dim*bi) = strain_tensor*b.r;
+
+		//Project that onto the direction of b.r;
+		DeltaRparallel = AffineDeltaR.segment<Dim>(Dim*bi).dot(b.r)/b.rlen;
+
+		//Calculate the induced forces on particles i and j.
+		D2i = (DeltaRparallel/b.rlen) * (k - g/b.rlen) * b.r  +  (g/b.rlen) * AffineDeltaR.segment<Dim>(Dim*bi);
+//		for(int d1=0; d1<TDIM; d1++)
+//		{   //check the sign here!
+//			df_on_i[d1] = (bnd.r[d1]/bnd.drlen)*DeltaRparallel * (k + f/bnd.drlen) - (f/bnd.drlen)*DeltaRtt.r[d1];
+//			df_on_j[d1] = -df_on_i[d1];
+//		} 
+
+		//Add the induced force to the n_d2Udvdgamma vector
+		n_d2Udvdgamma.segment<Dim>(Dim*b.i) += D2i;
+		n_d2Udvdgamma.segment<Dim>(Dim*b.j) -= D2i;
+	}
+}
+
+/**
+ *	This method calculates the linear order change in energy when each bond is extended according to DeltaR_bond.
+ *	The change in energy of a bond is (1/2)d2Udgamma2.
+ */
+template<int Dim>
+dbl CBondList<Dim>::CalculateEnergyChange(Eigen::VectorXd const &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
+{
+	dbl energy = 0.;
+	dbl g, k, DeltaRparallel2, DeltaRperp2;
+
+	for(int bi=0; bi<(int)list.size(); ++bi)
+	{
+		BOND const &b = list[bi];
+		g = b.g*stress_coeff;
+		k = b.k*unstress_coeff;
+		DeltaRparallel2 = POW2(DeltaR_bond.segment<Dim>(Dim*bi).dot(b.r)/b.rlen);
+		DeltaRperp2     = DeltaR_bond.segment<Dim>(Dim*bi).squaredNorm() - DeltaRparallel2;
+
+		energy += k*DeltaRparallel2 + g*DeltaRperp2/b.rlen;
+	}
+	energy /= 2.;
+	return energy;
+};
+
+/**
+ *	This method calculates all the elastic constants.
+ *
+ *	@param[out] cijkl An object of type cCIJKL<Dim> that stores the elastic constants.
+ *	@param[in] unstress_coeff Multiplicative factor applied to all spring constants.
+ *	@param[in] stress_coeff Multiplicative factor applied to all forces.
+ *	@param[in] Verbose if true(default), print out the elastic constants at the end.
+ */
+template<int Dim>
+void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl stress_coeff, bool Verbose) const
+{
+	int Nvar = Dim*N;
+
+	MatrixInterface<dbl> D1;
+	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
+	D1.LUdecomp();
+
+	dmat strain_tensor;
+	dbl prefactor = 2./Volume;//The prefactor contains a 2 in it from the equation dE/V = (1/2)cijkl uij ukl.
+
+	Eigen::VectorXd n_d2Udvdgamma = Eigen::VectorXd::Zero(Nvar);
+	Eigen::VectorXd uNonAffine_node = Eigen::VectorXd::Zero(Nvar);
+	Eigen::VectorXd DeltaR_bond = Eigen::VectorXd::Zero(Dim*(int)list.size());
+
+	for(int ii=0; ii<cCIJKL<Dim>::num_constants; ++ii)
+	{
+		//Set the strain tensor
+		cijkl.set_strain_tensor(strain_tensor, ii);
+
+		//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
+		//Also, calculate the forces on each particle due to the change in metric.
+		Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
+		
+		//Solve for the non-affine displacement
+		D1.solve_Mx_equals_b(uNonAffine_node, n_d2Udvdgamma);
+
+		//Add the non-affine extension of each bond to the affine extension
+		for(int bi=0; bi<(int)list.size(); ++bi)
+			DeltaR_bond.segment<Dim>(Dim*bi) += uNonAffine_node.segment<Dim>(Dim*list[bi].j) - uNonAffine_node.segment<Dim>(Dim*list[bi].i);
+
+		//Calculate the change in energy
+		dbl dE = CalculateEnergyChange(DeltaR_bond, unstress_coeff, stress_coeff);
+		dE *= prefactor; //dE is now 2*dE/V. This comes from the equation dE/V = (1/2)cijkl uij ukl.
+
+		//Set the ii'th elastic constant
+		cijkl.set_constant(dE, ii);
+	}
+	if(Verbose)
+		cijkl.print();
+}
+
+template<int Dim>
+void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool CalcHess) const
+{
+	Data.NPp = N;
+	Data.Nc = (int)list.size();
+	Data.Volume = Volume;
+
+	Data.Energy = ComputeEnergy();
+	ComputeStressTensor(Data.Stress);
+	Data.Pressure = ComputePressure(Data.Stress);
+
+	Eigen::VectorXd grad;
+	ComputeGradient(grad);
+	Data.MaxGrad = max_abs_element(grad);
+
+	Data.cijkl.SetArtificialValues(-999.);
+	if(CalcCijkl)
+		CalculateCijkl(Data.cijkl, 1., 1., false);
+
+	if(CalcHess)
+		ComputeHessian(Data.H.A);
+}
+
+
+
 
 
 
@@ -500,6 +785,21 @@ void CBondList<Dim>::PrintBonds() const
 {
 	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
 		b->print();
+}
+
+template<int Dim>
+void CBondList<Dim>::PrintBonds_txt(char *filename) const
+{
+	FILE *outfile = fopen(filename, "w");
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+	{
+		fprintf(outfile, "%5i %5i % e % e % e % e ", b->i, b->j, b->rlen, b->E, b->g, b->k);
+		for(int dd=0; dd<Dim; ++dd)
+			fprintf(outfile, "% e ", b->r[dd]);
+		fprintf(outfile, "\n");
+	}
+	fflush(outfile);
+	fclose(outfile);
 }
 
 template<int Dim>
@@ -519,10 +819,12 @@ bool CBondList<Dim>::CheckConsistency() const
 		if(imax < list[b].j) imax = list[b].j;
 	}
 
-	printf("imin = %i, imax = %i, N = %i\n", imin, imax, N);
+	//printf("imin = %i, imax = %i, N = %i\n", imin, imax, N);
 
 	if(imin >= 0 && imax < N)
-		return true;
+		return true
+			;
+	assert(false);
 	return false;
 }
 

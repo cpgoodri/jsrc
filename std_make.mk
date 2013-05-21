@@ -3,6 +3,7 @@
 srcDIR = $(DIR)
 
 srcOBJGQS = \
+Computers/cijkl.o \
 Resources/Resources.o \
 Resources/Exception.o \
 Resources/index_map.o
@@ -31,12 +32,14 @@ INCLUDE = \
 
 LIBRARY = \
 -L/data1/jamming/lib \
--L/data1/jcode/local/lib \
--L/data1/jamming/lib/lib_suitesparse \
+-L/data0/home/cpgoodri/jmodes/local/lib \
 -L/usr/global/netcdf-4.1.1-i11/lib -lnetcdf_c++ \
 -L/usr/global/hdf5-1.8.5-patch1-i11/lib
+#-L/data1/jamming/lib/lib_suitesparse \
+-L/data1/jcode/local/lib \
 
-SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack 
+#SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack -blas
+SuiteSparseLINK = -lumfpack -lamd -lufconfig -lcholmod -lcolamd -lblas
 netCDFLINK = -lnetcdf_c++ -lnetcdf
 hdf5LINK = -lhdf5_hl -lhdf5 -lz
 intelLINK = -lifcore -limf -lm

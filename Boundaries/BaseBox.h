@@ -51,10 +51,7 @@
 
 #include "../Resources/std_include.h"
 #include <Eigen/LU>
-#include "../Resources/MersenneTwister.h"
 #include "netcdfcpp.h"
-#include <map>
-#include <string>
 
 namespace LiuJamming
 {
@@ -78,11 +75,13 @@ private:
 //global variables to read box configurations
 	static std::map<string,CBox<Dim>*> BoxTypes;
 
+public:
 	//enum{SQUARE, RECTANGULAR, SYMMETRIC_QUADRILATERAL};
 	enum{RECTANGULAR, SYMMETRIC_QUADRILATERAL};
-
+protected:
 	int BoxSymmetry;
 
+private:
 //Functions to check that the correct dimensions, variables, and attributes are present
 //in a netCDF file.
 	static bool CheckNetCDF(const NcFile &file);
@@ -107,13 +106,13 @@ public:
 	
 	const CBox &operator=(const CBox &box);
 
-//functions to write box configurations
-	void Write(NcFile &file,int record); 
-	virtual string DataToString() = 0;
 	
-//functions to read box configurations
+//functions to read and write box configurations
+	//static string GetName() const = 0;
+	virtual string DataToString() const = 0;
  	virtual void StringToData(string Data) = 0;
  	virtual CBox *Create() = 0;
+	void Write(NcFile &file,int record); 
 	
 //functions using the transformation matrix
 	void SetTransformation(dmat &Trans);
@@ -306,7 +305,7 @@ void CBox<Dim>::GetTransformation(dmat &Trans)
 }
 
 template <int Dim>
-void CBox<Dim>::Transform(dvec &Point) const
+inline void CBox<Dim>::Transform(dvec &Point) const
 {
 	switch(BoxSymmetry)
 	{
@@ -320,23 +319,23 @@ void CBox<Dim>::Transform(dvec &Point) const
 }
 
 template <int Dim>
-void CBox<Dim>::Transform(Eigen::VectorXd &Points) const
+inline void CBox<Dim>::Transform(Eigen::VectorXd &Points) const
 {
 	switch(BoxSymmetry)
 	{
 		case RECTANGULAR: 
-			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
 			break;
 		case SYMMETRIC_QUADRILATERAL:
 		default:
-			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
 	}
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransform(dvec &Point) const
+inline void CBox<Dim>::InverseTransform(dvec &Point) const
 {
 	switch(BoxSymmetry)
 	{
@@ -350,17 +349,17 @@ void CBox<Dim>::InverseTransform(dvec &Point) const
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
+inline void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
 {
 	switch(BoxSymmetry)
 	{
 		case RECTANGULAR: 
-			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Inverse_Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
 			break;
 		case SYMMETRIC_QUADRILATERAL:
 		default:
-			for(int i = 0 ; i<Points.rows()/Dim ; i++)
+			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
 	}
 }
