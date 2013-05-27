@@ -95,6 +95,13 @@ public:
 
 	CStaticState<Dim> &operator=(const CStaticState<Dim> &copy);
 
+//Set potential
+	void SetPotentialHarmonic(dbl epsilon=1.);
+	void SetPotentialHertzian(dbl epsilon=1.);
+
+//Set box
+	void SetBoxPeriodic(int NonPeriodicDim=0);
+
 //Functions to construct systems 
 	void RandomizePositions(long seed = 1);
 	void RandomizePositions(MTRand *random);
@@ -195,21 +202,24 @@ void CStaticState<Dim>::PopulateNetCDF(NcFile &file)
 //!!!POTENTIAL MEMORY LEAK?
 template <int Dim>
 CStaticState<Dim>::CStaticState()
+	: N(0),
+	  Box(NULL),
+	  Potential(NULL)
 {
-	N = 0;
-	Box = new CPeriodicBox<Dim>();
-	Potential = new CHarmonicPotential();
+	SetBoxPeriodic();
+	SetPotentialHarmonic();
 }
 
 template <int Dim>
 CStaticState<Dim>::CStaticState(int _N)
+	: N(_N),
+	  Box(NULL),
+	  Potential(NULL)
 {
-	N = _N;
-	Box = new CPeriodicBox<Dim>();
-	Potential = new CHarmonicPotential();
+	SetBoxPeriodic();
+	SetPotentialHarmonic();
 	
 	Positions = Eigen::ArrayXd::Zero(Dim*N);
-//	Radii = Eigen::ArrayXd::Constant(N,1.);
 	Radii = Eigen::ArrayXd::Constant(N,0.5);
 }
 	
@@ -247,6 +257,35 @@ CStaticState<Dim> &CStaticState<Dim>::operator=(const CStaticState<Dim> &copy)
 	}
 	return *this;
 }
+
+
+
+template<int Dim>
+void CStaticState<Dim>::SetPotentialHarmonic(dbl epsilon)
+{
+	if(Potential!=NULL)	delete Potential;
+	Potential = new CHarmonicPotential(epsilon);
+}
+template<int Dim>
+void CStaticState<Dim>::SetPotentialHertzian(dbl epsilon)
+{
+	if(Potential!=NULL)	delete Potential;
+	Potential = new CHarmonicHertzian(epsilon);
+}
+
+template<int Dim>
+void CStaticState<Dim>::SetBoxPeriodic(int NonPeriodicDim)
+{
+	if(Box!=NULL)	delete Box;
+	switch(NonPeriodicDim)
+	{
+		case 0:		Box = new CPeriodicBox<Dim,0>();	break;
+		case 1:		Box = new CPeriodicBox<Dim,1>();	break;
+		case Dim:	Box = new CPeriodicBox<Dim,Dim>();	break;
+		default:	assert(false);
+	}
+}
+
 
 //Functions to construct systems 
 //Randomly positions particles in the system. 
