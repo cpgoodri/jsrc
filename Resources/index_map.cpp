@@ -149,6 +149,20 @@ void index_map::remove_many_from_map(vector<int> vp)
 }
 */
 
+void index_map::PrintMap() const
+{
+	printf("Printing index_map:\n");
+	int im;
+	for(int i=0; i<full_size; ++i)
+	{
+		im = mapi[i];
+		if(im != -1)
+			assert( map[im] == i );
+		printf("\tmap[%5i] = %i\n", im, i);
+	}
+
+}
+
 
 
 

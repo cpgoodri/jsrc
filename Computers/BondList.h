@@ -56,17 +56,23 @@ public:
 	int GetNBonds() const;			//!<Get the number of bonds.
 	dbl GetVolume() const;			//!<Get the volume.
 
+	typename vector<BOND>::const_iterator begin() const;
+	typename vector<BOND>::const_iterator end() const;
+
 ///@}
 
 //! @name Bond Manipulation
 ///@{
 	void CalculateNeighbors(vector< vector<int> > &nbrs) const;	//!<Get a list of the neighbors of each particle
 	void RemoveBonds(vector<bool> const &BondsToRemove); //!<Remove bonds from the list
+	void RemoveBondsAccordingToMap(index_map const &map); //!<Remove any bonds that involve a node that is removed from the index_map.
 	void UpdateBondIndices(index_map const &map);	//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
 	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const; //!<Identify nodes that are not fixed and are involved in less than c bonds.
 	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const; //!<Identify rattlers assuming no fixed nodes.
-	void RemoveRattlers(int c=Dim+1, bool Verbose=false); //!<Remove rattlers, i.e. nodes with less than c bonds
-	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false); //!< Remove rattlers, and return the corresponding index_map.
+	void RemoveRattlers(index_map &map, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false);	//!<Remove rattlers (i.e. nodes with less than c bonds), and return the corresponding index_map.
+	void RemoveRattlers(vector<bool> const &fixed, int c=Dim+1, bool Verbose=false);					//!<Overloaded method
+	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false);								//!<Overloaded method
+	void RemoveRattlers(int c=Dim+1, bool Verbose=false);												//!<Overloaded method
 
 	void MakeUnstressed();				//!<Remove the prestress form every bond.
 	void MultiplyForces(dbl m);			//!<Multiply all forces by a constant.
@@ -81,6 +87,7 @@ public:
 	dbl  ComputePressure(dmat &stress) const;			//!<Compute the pressure.
 	void ComputeStressTensor(dmat &stress) const;		//!<Compute the Dim by Dim stress tensor.
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const;	//!<Compute the Dim*N dimensional energy gradient (i.e. -Fnet), and return the energy.
+	dbl  ComputeGradient(Eigen::VectorXd &grad, vector<bool> const &FixedDOF) const;
 
 	void ComputeHessianElements(vector<TRIP> &coefficients, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;				//!<Compute the elements of the hessian as a list.
 	void PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const;
@@ -187,6 +194,18 @@ dbl CBondList<Dim>::GetVolume() const
 {
 	return Volume;
 }
+	
+template<int Dim>
+typename vector< CBond<Dim> >::const_iterator CBondList<Dim>::begin() const
+{
+	return list.begin();
+}
+
+template<int Dim>
+typename vector< CBond<Dim> >::const_iterator CBondList<Dim>::end() const
+{
+	return list.end();
+}
 
 template<int Dim>
 void CBondList<Dim>::CalculateNeighbors(vector< vector<int> > &nbrs) const
@@ -255,7 +274,7 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 	int rattlers_found = 0;
 	int new_rattlers_found;
 	if(Verbose)
-		printf("Removing particles with less than %i contacts...\t", c);
+		printf("Identifying nodes with less than %i bonds...\t", c);
 
 	//If a particle is already designated a rattler, clear its nbrs list...
 	for(int i=0; i<N; ++i) 
@@ -290,7 +309,7 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 		}
 	}while(new_rattlers_found);
 	if(Verbose)
-		printf("    --Removed % 5i new rattlers--\t", rattlers_found);
+		printf("    --Identified % 5i new rattlers--\t", rattlers_found);
 
 	//Perform Checks
 	for(int i=0; i<N; ++i)
@@ -326,27 +345,20 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 template<int Dim>
 int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c, bool Verbose) const
 {
-	vector<bool> fixed;
-	fixed.assign(N,false);
+	vector<bool> fixed;	fixed.assign(N,false);
 	return IdentifyRattlers(nbrs,rattlers,fixed,c,Verbose);
-}
-
-template<int Dim>
-void CBondList<Dim>::RemoveRattlers(int c, bool Verbose)
-{
-	index_map map;
-	RemoveRattlers(map, c, Verbose);
 }
 
 /**
  *	This method calculates the nbrs list, identifies rattlers, sets map, removes any bonds that may involve rattlers, and updates the i and j indices of each bond (as well as N) to account for the removed rattlers.
  *	
  *	@param[out] map An index_map indicating which nodes are rattlers.
+ *	@param[in] fixed A vector of bool's that indicates if a node is fixed (true) and thus should never be considered.
  *	@param[in] c The number of bonds involving a node required for that node to not be a rattler. Default is Dim+1.
  *	@param[in] Verbose Bool to determine if number of identified rattlers, etc. should be printed to stdout.
  */
 template<int Dim>
-void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
+void CBondList<Dim>::RemoveRattlers(index_map &map, vector<bool> const &fixed, int c, bool Verbose)
 {
 	//Calculate the nbrs list
 	vector< vector<int> > nbrs;
@@ -354,7 +366,7 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 	
 	//Identify the rattlers and set the map
 	vector<bool> rattlers(N,false);
-	IdentifyRattlers(nbrs, rattlers, c, Verbose);
+	IdentifyRattlers(nbrs, rattlers, fixed, c, Verbose);
 	map.set_map(rattlers);
 	
 	//Remove the bonds that correspond to rattlers
@@ -370,6 +382,53 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 	if(!CheckConsistency())
 		abort();
 }
+
+template<int Dim>
+void CBondList<Dim>::RemoveRattlers(int c, bool Verbose)
+{
+	index_map map;
+	vector<bool> fixed;	fixed.assign(N,false);
+	RemoveRattlers(map, fixed, c, Verbose);
+}
+
+template<int Dim>
+void CBondList<Dim>::RemoveRattlers(vector<bool> const &fixed, int c, bool Verbose)
+{
+	index_map map;
+	RemoveRattlers(map, fixed, c, Verbose);
+}
+template<int Dim>
+void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
+{
+	vector<bool> fixed;	fixed.assign(N,false);
+	RemoveRattlers(map, fixed, c, Verbose);
+}
+
+
+template<int Dim>
+void CBondList<Dim>::RemoveBondsAccordingToMap(index_map const &map)
+{
+	assert(N==map.full_size);
+	std::vector<bool> rattlers(N,false);
+	for(int ii=0;ii <N;++ii)
+	{
+		if(map.inv(ii)==-1) rattlers[ii]=true;
+	};
+
+	//Remove the bonds that correspond to rattlers
+	std::vector<bool> BondsToRemove(list.size(),false);
+	for(int i=0; i<(int)list.size(); ++i)
+		if(rattlers[list[i].i] || rattlers[list[i].j])
+			BondsToRemove[i] = true;
+	RemoveBonds(BondsToRemove);
+
+	//Update the i and j indices of each bond (as well as N) in accordence with the map
+	//UpdateBondIndices(map);
+	//DMS: actually, no…if one then runs another "check for rattlers" sweep with a new
+	//definition of contacts needed to be a non-rattler, it is important that the original
+	//indices are preserved
+}
+
 
 template<int Dim>
 void CBondList<Dim>::MakeUnstressed()
@@ -438,10 +497,23 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 		temp = (b->g/b->rlen)*b->r;
 		for(dd=0; dd<Dim; ++dd)
 		{
-			grad[Dim*b->i+dd] += temp[dd]; //Check signs here!!!
+			grad[Dim*b->i+dd] += temp[dd];
 			grad[Dim*b->j+dd] -= temp[dd];
 		}
 	}
+	return energy;
+}
+
+template<int Dim>
+dbl CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad, vector<bool> const &FixedDOF) const
+{
+	dbl energy = ComputeGradient(grad);
+
+	assert(grad.size() == FixedDOF.size());
+	for(int i=0; i<grad.size(); ++i)
+		if(FixedDOF[i])
+			grad[i] = 0.;
+	
 	return energy;
 }
 
@@ -764,10 +836,11 @@ void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool 
 	ComputeGradient(grad);
 	Data.MaxGrad = max_abs_element(grad);
 
-	Data.cijkl.SetArtificialValues(-999.);
+	Data.cijkl.SetArtificialValues(-1e12);
 	if(CalcCijkl)
+	{
 		CalculateCijkl(Data.cijkl, 1., 1., false);
-
+	}
 	if(CalcHess)
 		ComputeHessian(Data.H.A);
 }
@@ -822,8 +895,7 @@ bool CBondList<Dim>::CheckConsistency() const
 	//printf("imin = %i, imax = %i, N = %i\n", imin, imax, N);
 
 	if(imin >= 0 && imax < N)
-		return true
-			;
+		return true;
 	assert(false);
 	return false;
 }

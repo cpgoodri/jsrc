@@ -60,6 +60,8 @@ public:
 
 	void set_map(const vector<bool> &ToBeRemoved);
 	void set_map(const vector<int> &new_map);
+
+	void PrintMap() const;
 };
 
 #endif //INDEX_MAP_H

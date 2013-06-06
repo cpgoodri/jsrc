@@ -74,6 +74,9 @@ private:
 	CStaticState<Dim> &State;
 	CGrid<Dim> Grid;
 
+	bool FixDof;
+	vector<bool> FixedDof;
+
 public:
 	CBondList<Dim> Bonds;	//!<Bond list for standard computations
 	index_map RattlerMap;	//!<Map for rattlers.
@@ -97,6 +100,7 @@ public:
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 
 	void StdPrepareSystem();
+	void StdPrepareSystem(vector<bool> const &fixed);
 	void CalculateStdData(bool CalcCijkl = true, bool CalcHess = true);
 	void CalculateStdData(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
 	void CalculateStdData_Unstressed(bool CalcCijkl=true, bool CalcHess = true);
@@ -124,6 +128,9 @@ public:
 */
 
 //Needed for minimization routines
+	void SetFixedDof(vector<bool> const &_FixedDof);
+	void UnsetFixedDof();
+
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
 	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
 	void Move(Eigen::VectorXd const &step);
@@ -143,19 +150,19 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer()
+CStaticComputer<Dim>::CStaticComputer() : FixDof(false)
 {
 }
 
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer(CStaticState<Dim> &_State) : State(_State), Grid(&State)
+CStaticComputer<Dim>::CStaticComputer(CStaticState<Dim> &_State) : State(_State), Grid(&State), FixDof(false)
 {	
 	Grid.Allocate();
 }
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State(_Copy.State), Grid(&State)
+CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State(_Copy.State), Grid(&State), FixDof(_Copy.FixDof), FixedDof(_Copy.FixedDof)
 {
 	Grid.Allocate();
 }
@@ -259,12 +266,18 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 
 
 
-
 template <int Dim>
 void CStaticComputer<Dim>::StdPrepareSystem()
 {
-	ComputeBondList(Bonds);				//Use the member variable derived from CBaseComputer
-	Bonds.RemoveRattlers(RattlerMap);	//Remove rattlers
+	std::vector<bool> fixed; fixed.assign(State.GetParticleNumber(),false);
+	StdPrepareSystem(fixed);
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::StdPrepareSystem(vector<bool> const &fixed)
+{
+	ComputeBondList(Bonds);						//Use the member variable derived from CBaseComputer
+	Bonds.RemoveRattlers(RattlerMap, fixed, Dim+1, true);	//Remove rattlers
 }
 
 template <int Dim>
@@ -305,12 +318,27 @@ void CStaticComputer<Dim>::CalculateStdData_Unstressed(CStdData<Dim> &data, bool
 
 
 //Needed for minimization routines
+
+template <int Dim>
+void CStaticComputer<Dim>::SetFixedDof(vector<bool> const &_FixedDof)
+{
+	FixDof = true;
+	FixedDof = _FixedDof;
+	assert(FixedDof.size() == Dim*State.GetParticleNumber());
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::UnsetFixedDof()
+{
+	FixDof = false;
+}
+
 template <int Dim>
 void CStaticComputer<Dim>::Evaluate(Eigen::VectorXd &grad, dbl &fx) 
 {
 	CBondList<Dim> bonds;
 	ComputeBondList(bonds);
-	fx = bonds.ComputeGradient(grad);
+	fx = FixDof?bonds.ComputeGradient(grad,FixedDof):bonds.ComputeGradient(grad);
 };
 
 template <int Dim>

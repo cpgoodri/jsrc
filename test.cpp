@@ -242,6 +242,89 @@ void test2(int N, dbl phi, int seed)
 }
 
 
+void test_fixed(int N, dbl phi, int seed, int Nfixed_particles = 0)
+{
+	//Create the system
+	CStaticState<DIM> System(N);
+	System.RandomizePositions(seed);
+	System.SetRadiiPolyUniform();
+	System.SetPackingFraction(phi);
+
+	//You should actually fix random particles, not just the first ones.
+	vector<bool> FixedDof(DIM*N,false); //1 -> fixed, 0 -> not fixed. size DIM*N
+	for(int i=0; i<Nfixed_particles; ++i)
+	{
+		FixedDof[DIM*i  ] = true;
+		FixedDof[DIM*i+1] = true;
+	}
+
+	//Minimize the energy:
+	const dbl tol = 1e-12;
+	CStaticComputer<DIM> Computer(System);
+	Computer.SetFixedDof(FixedDof);
+	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE, tol);
+
+	//Prepare system for standard calculations 
+	//	The routine to remove rattlers is currently only set up to deal with entirely fixed particles.
+	//	We first convert FixedDof into FixedParticles and then pass this to the StdPrepareSystem routine
+	vector<bool> FixedParticles(N,false);
+	for(int i=0; i<N; ++i)
+		if(FixedDof[DIM*i] || FixedDof[DIM*i+1])
+			FixedParticles[i] = true;
+	Computer.StdPrepareSystem(FixedParticles); //this sets the internal BondList and removes rattlers.
+
+	//Calculate info
+	printf("\nCalculate data for stressed system-->\n");
+	Computer.CalculateStdData(false,false); //Don't compute elastic constants or write down the dynamical matrix.
+	
+	//NOTE: Here, the value of max_grad was calculated without knowing that particles are fixed. Redo this calculation manually:
+	//	We first have to update FixedDof according to the rattler map (found in Computer.RattlerMap).
+	assert(Computer.RattlerMap.full_size == N);
+	vector<bool> FixedDofNew;
+	for(int i=0; i<N; ++i)
+		if(Computer.RattlerMap.inv(i) != -1)
+		{
+			FixedDofNew.push_back(FixedDof[DIM*i]);
+			FixedDofNew.push_back(FixedDof[DIM*i+1]);
+		}
+	//	Now compute the gradient
+	Eigen::VectorXd grad;
+	Computer.Bonds.ComputeGradient(grad, FixedDofNew);
+	Computer.Data.MaxGrad = max_abs_element(grad);
+
+
+	//Print out data to the screen
+	Computer.Data.Print();
+
+	int Nc_mm=0, Nc_mf=0, Nc_ff=0;
+	bool ifixed, jfixed;
+	for(typename vector< CBond<DIM> >::const_iterator b=Computer.Bonds.begin(); b!=Computer.Bonds.end(); ++b)
+	{
+		assert(b->i >= 0 && b->i < Computer.RattlerMap.size());
+		assert(b->j >= 0 && b->j < Computer.RattlerMap.size());
+		ifixed = FixedParticles[Computer.RattlerMap[b->i]];
+		jfixed = FixedParticles[Computer.RattlerMap[b->j]];
+
+		if(ifixed && jfixed)
+			++Nc_ff;
+		else if(ifixed || jfixed)
+			++Nc_mf;
+		else
+			++Nc_mm;
+	}
+
+	int min_passed = (Computer.Data.MaxGrad < tol)?1:0;
+
+	//Save data. Right now this prints to the screen, but could easily have it print to a file.
+
+	//DATA: N, phi, Nfixed, seed, energy, pressure, max_grad, min_passed, NPp, Nc, Nc_mm, Nc_mf, Nc_ff
+	printf("%5i %f %5i %5i % e % e % e %5i %5i %5i %5i %5i %5i\n", N, phi, Nfixed_particles, seed, Computer.Data.Energy, Computer.Data.Pressure, Computer.Data.MaxGrad, min_passed, Computer.Data.NPp, Computer.Data.Nc, Nc_mm, Nc_mf, Nc_ff);
+	//
+}
+
+
+
+
 
 void test3(int N, dbl phi, int seed)
 {
@@ -364,15 +447,17 @@ int main(int argc, char* argv[])
 	dbl Lp = -1.0;			//p
 	dbl phi = 0.9;			//f
 	int r = 1;				//r
+	int NFixedParticles = 0;//x
 
 	int c;
-	while((c=getopt(argc, argv, "n:p:f:r:")) != -1)
+	while((c=getopt(argc, argv, "n:p:f:r:x:")) != -1)
 		switch(c)
 		{
 			case 'n':	N = atoi(optarg); break;
 			case 'p':	Lp = atof(optarg); break;
 			case 'f':	phi = atof(optarg); break;
 			case 'r':	r = atoi(optarg); break;
+			case 'x':	NFixedParticles = atoi(optarg); break;
 			case '?':	
 				if(optopt == 'c') 
 					std::cerr << "Option -" << optopt << "requires an argument.\n";
@@ -388,8 +473,11 @@ int main(int argc, char* argv[])
 		std::cerr << "Non-option argument " << argv[index] << "\n";
 
 
+
+	test_fixed(N, phi, r, NFixedParticles);
+
 //	test1(N, phi, r);
-	test2(N, phi, r);
+//	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);
 	//SamTest(N, Lp, r);

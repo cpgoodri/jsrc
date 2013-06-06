@@ -39,9 +39,30 @@ using std::string;
 using std::ostream;
 using std::istream;
 
+
+//namespace LiuJamming
+//{
+
+
 typedef double dbl;
 typedef std::complex<dbl> cdbl;
 
+
+
+/*
+namespace Constants
+{
+	const dbl sqrt2 = 1.4142135623730950488016887242096980785696718753769480;
+	const dbl sqrt3 = 1.7320508075688772935274463415058723669428052538103806;
+
+	const dbl FCC_DENSITY          = 0.740480489693061041169313498343;  //pi*sqrt(2)/6
+	const dbl BCC_DENSITY          = 0.680174761587831693972779346616;  //pi*sqrt(3)/8
+	const dbl SIMPLE_CUBIC_DENSITY = 0.523598775598298873077107230547;  //pi/6
+};
+
+
+}
+*/
 #endif //STD_INCLUDE_H
 
 
