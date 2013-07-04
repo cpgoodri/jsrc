@@ -474,9 +474,9 @@ int main(int argc, char* argv[])
 
 
 
-	test_fixed(N, phi, r, NFixedParticles);
+//	test_fixed(N, phi, r, NFixedParticles);
 
-//	test1(N, phi, r);
+	test1(N, phi, r);
 //	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);

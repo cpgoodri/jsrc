@@ -1,5 +1,3 @@
-#srcDIR = /data0/home/cpgoodri/jcode/jamming/jsrc
-
 srcDIR = $(DIR)
 
 srcOBJGQS = \
@@ -25,6 +23,7 @@ LinkFLAGS = $(FLAGS)
 
 
 INCLUDE = \
+-I$(srcDIR) \
 -I/data1/jamming/cpp/arpack++/include \
 -I/usr/global/netcdf-4.1.1-i11/include \
 -I/data1/jcode/local/include/SuiteSparse \
@@ -32,14 +31,17 @@ INCLUDE = \
 
 LIBRARY = \
 -L/data1/jamming/lib \
--L/data0/home/cpgoodri/jmodes/local/lib \
+-L/data1/jcode/local/lib \
 -L/usr/global/netcdf-4.1.1-i11/lib -lnetcdf_c++ \
 -L/usr/global/hdf5-1.8.5-patch1-i11/lib
 #-L/data1/jamming/lib/lib_suitesparse \
 -L/data1/jcode/local/lib \
+-L/data0/home/cpgoodri/jmodes/local/lib \
+-L/data1/jamming/lib/lib_suitesparse \
 
 #SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack -blas
-SuiteSparseLINK = -lumfpack -lamd -lufconfig -lcholmod -lcolamd -lblas
+SuiteSparseLINK = -lumfpack -lamd -lcholmod -lcolamd -lblas
+#SuiteSparseLINK = -lumfpack -lamd -lufconfig -lcholmod -lcolamd -lblas
 netCDFLINK = -lnetcdf_c++ -lnetcdf
 hdf5LINK = -lhdf5_hl -lhdf5 -lz
 intelLINK = -lifcore -limf -lm

@@ -62,6 +62,10 @@ public:
 	void set_map(const vector<int> &new_map);
 
 	void PrintMap() const;
+
+	template<typename T> void vector_expand(T const *small, T *large) const;  //!< Convert a vector from mapped indices to real indices, setting undefined elements to (T)0
+	template<typename T> void vector_contract(T const *large, T *small) const;  //!< Convert a vector from real indices to mapped indices.
+
 };
 
 #endif //INDEX_MAP_H

@@ -163,6 +163,35 @@ void index_map::PrintMap() const
 
 }
 
+template<typename T>
+void index_map::vector_expand(T const *small, T *large) const
+{
+	int im;
+	for(int i=0; i<full_size; ++i)
+	{
+		im = inv(i);
+		if(im==-1) 
+			large[i] = (T)0;
+		else
+			large[i] = small[im];
+	}
+}
+
+template<typename T>
+void index_map::vector_contract(T const *large, T *small) const
+{
+	for(int im=0; im<size(); ++im)
+		small[im] = large[map[im]];
+}
+
+
+
+
+
+
+
+
+
 
 
 

@@ -56,6 +56,8 @@ public:
 	int GetNBonds() const;			//!<Get the number of bonds.
 	dbl GetVolume() const;			//!<Get the volume.
 
+	void GetBond(int i, BOND &b) const; //!<Copy a bond 
+
 	typename vector<BOND>::const_iterator begin() const;
 	typename vector<BOND>::const_iterator end() const;
 
@@ -193,6 +195,14 @@ template<int Dim>
 dbl CBondList<Dim>::GetVolume() const
 {
 	return Volume;
+}
+
+template<int Dim>
+void CBondList<Dim>::GetBond(int i, BOND &b) const
+{
+	assert(i>=0);
+	assert(i<GetNBonds());
+	b = list[i];
 }
 	
 template<int Dim>
@@ -878,25 +888,28 @@ void CBondList<Dim>::PrintBonds_txt(char *filename) const
 template<int Dim>
 bool CBondList<Dim>::CheckConsistency() const
 {
-	//Calculate the largest and smallest particle index
-	int imin, imax;
-	imin = imax = list[0].i;
-	for(int b=1; b<(int)list.size(); ++b)
+	if(!list.empty())
 	{
-		if(imin > list[b].i) imin = list[b].i;
-		if(imax < list[b].i) imax = list[b].i;
-	}
-	for(int b=0; b<(int)list.size(); ++b)
-	{
-		if(imin > list[b].j) imin = list[b].j;
-		if(imax < list[b].j) imax = list[b].j;
-	}
+		//Calculate the largest and smallest particle index
+		int imin, imax;
+		imin = imax = list[0].i;
+		for(int b=1; b<(int)list.size(); ++b)
+		{
+			if(imin > list[b].i) imin = list[b].i;
+			if(imax < list[b].i) imax = list[b].i;
+		}
+		for(int b=0; b<(int)list.size(); ++b)
+		{
+			if(imin > list[b].j) imin = list[b].j;
+			if(imax < list[b].j) imax = list[b].j;
+		}
 
-	//printf("imin = %i, imax = %i, N = %i\n", imin, imax, N);
+		//printf("imin = %i, imax = %i, N = %i\n", imin, imax, N);
 
-	if(imin >= 0 && imax < N)
-		return true;
-	assert(false);
+		if(imin >= 0 && imax < N)
+			return true;
+		assert(false);
+	}
 	return false;
 }
 
