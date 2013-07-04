@@ -198,10 +198,12 @@ void test1(int N, dbl phi, int seed)
 	bonds.ComputeHessian(D1.A);
 
 	//Diagonalize the hessian
-	D1.Diagonalize();			//Get all Eigenvalues/vectors (except the largest one)
+//	D1.Diagonalize();			//Get all Eigenvalues/vectors (except the largest one)
 //	D1.VDiagonalize();			//Same as above, but print Eigenvalue Report at end
 //	D1.Diagonalize(100);		//Get only the lowest 100
 //	D1.VDiagonalize(100);		//Same as above, but print Eigenvalue Report at end
+	
+	D1.VDiagonalize(100);		//Same as above, but print Eigenvalue Report at end
 
 
 	//Report the first 8 (default=30) eigenvalues (plus some header info) to stdout.

@@ -123,17 +123,18 @@ public:
 	int num_converged;
 	bool compute_vecs;
 	bool verbose_diagonalize;
+	bool UseShiftAndInvert;
 
 	//Solver for UMFPACK
 	Eigen::UmfPackLU<EMatrix> UMFsolver;
 
 	MatrixInterface()
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL)
 	{
 	};
 
 	MatrixInterface(EMatrix const &mat)
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL)
 		  A(mat)
 	{
 	};
@@ -164,6 +165,15 @@ private:
 		Eigen::Map<EVector> Ew(w,A.rows());
 		Ew = A * Ev;
 		//Ew = A.selfadjointView<>() * Ev; //Not sure why this doesn't work.
+	};
+
+	void MultMinvv_ARPACK(T *v, T *w)
+	{
+		//Count the number of times this method is called. Print every 100 times
+		++Mv_counter;
+		if(Mv_counter%100 == 0) { printf(" %li", Mv_counter); fflush(stdout); }
+
+		solve_Mx_equals_b(w,v);
 	};
 
 public:
@@ -200,16 +210,27 @@ public:
 			delete[] Eigenvectors;
 	};
 
+	void SetShiftAndInvert(bool _UseShiftAndInvert=true)	{ UseShiftAndInvert=_UseShiftAndInvert;};
+	void SetNumRequest(int _num_request=0)					{ num_request = _num_request;};
+	void SetComputeVecs(bool _compute_vecs=true)			{ compute_vecs = _compute_vecs;};
+
 	void Diagonalize();
 	void Diagonalize(int _num_request);
 	void VDiagonalize();
 	void VDiagonalize(int _num_request);
+	void Diagonalize_SI();
+	void Diagonalize_SI(int _num_request);
+	void VDiagonalize_SI();
+	void VDiagonalize_SI(int _num_request);
 
 	void Report(int num_print = 30) const;
 	void CalculateResidual(EVector &Residual) const;
 
+	T    GetVal(int m) const;
+	T    GetVec(int m, int i) const;
+
 	void LUdecomp();
-	void solve_Mx_equals_b(EVector &X, EVector &B);
+	void solve_Mx_equals_b(EVector &X, EVector const &B);
 	void solve_Mx_equals_b(T *x, T const *b);
 
 //	void save_matrix_nc(char *filename);
@@ -225,6 +246,14 @@ void MatrixInterface<T>::Diagonalize()
 	std::cout << "Begin Diagonalization..." << std::endl;
 	time_t start,end;
 	time(&start);
+
+	if(UseShiftAndInvert)
+	{
+		cout << "Shift and Invert mode is on. First perform an LU decomposition... ";
+		LUdecomp();
+		cout << "Done." << endl;
+	}
+
 	Mv_counter = 0;
 	std::cout << "calls to MultMv:" << std::endl;
 	fflush(stdout);
@@ -236,7 +265,12 @@ void MatrixInterface<T>::Diagonalize()
 		Eigenvectors = new T[num_request*A.rows()];
 
 	ARWrapper<T> Wrapper;
-	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMv_ARPACK,(char*)ARWrapper<T>::which.c_str());
+	if(UseShiftAndInvert)
+	{
+		Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMinvv_ARPACK,(char*)ARWrapper<T>::which2.c_str());
+		Wrapper.Solver.SetShiftInvertMode(0.,this,&MatrixInterface<T>::MultMinvv_ARPACK);
+	}else
+		Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMv_ARPACK,(char*)ARWrapper<T>::which.c_str());
 	if(compute_vecs)
 		num_converged = Wrapper.Solver.EigenValVectors(Eigenvectors,Eigenvalues);
 	else
@@ -272,53 +306,34 @@ void MatrixInterface<T>::VDiagonalize(int _num_request)
 	Diagonalize(_num_request);
 }
 
-
-/*
 template<typename T>
-void MatrixInterface<T>::Diagonalize_shift_and_invert(T sigma)
+void MatrixInterface<T>::Diagonalize_SI()
 {
-	ClearEigenstuff();
+	SetShiftAndInvert();
+	Diagonalize();
+}
 
-	std::cout << "Begin Diagonalization..." << std::endl;
-	time_t start,end;
-	time(&start);
-	OPv_counter = 0;
-	Mv_counter = 0;
-	std::cout << "calls to MultOPv:" << std::endl;
-	fflush(stdout);
+template<typename T>
+void MatrixInterface<T>::Diagonalize_SI(int _num_request)
+{
+	SetShiftAndInvert();
+	Diagonalize(_num_request);
+}
 
-	if(num_request <= 0) num_request = A.rows()-1;
-	else
-		num_request=std::min(A.rows()-1, num_request);
-	Eigenvalues = new T[num_request];
-	if(compute_vecs)
-		Eigenvectors = new T[num_request*A.rows()];
+template<typename T>
+void MatrixInterface<T>::VDiagonalize_SI()
+{
+	SetShiftAndInvert();
+	VDiagonalize();
+}
 
-//	EMatrix Identity(A.rows(), A.rows());
-//	set_identity(Identity, A.rows());
-//	OPinv = A - sigma*Identity;
-//	OP_solver.compute(OPinv);
-	ARWrapper<T,EMatrix> Wrapper;
-//	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultOPv,(char*)ARWrapper<T,EMatrix>::which2.c_str());
-	Wrapper.Solver.DefineParameters(A.rows(),num_request,this,&MatrixInterface<T>::MultMv,(char*)ARWrapper<T,EMatrix>::which.c_str());
-	Wrapper.Solver.ChangeShift(sigma);
-	if(compute_vecs)
-		num_converged = Wrapper.Solver.EigenValVectors(Eigenvectors,Eigenvalues);
-	else
-		num_converged = Wrapper.Solver.Eigenvalues(Eigenvalues);
+template<typename T>
+void MatrixInterface<T>::VDiagonalize_SI(int _num_request)
+{
+	SetShiftAndInvert();
+	VDiagonalize(_num_request);
+}
 
-	for(int i=0; i<num_converged; ++i)
-		Eigenvalues[i] = ((T)1.)/Eigenvalues[i];
-
-	std::cout << std::endl;
-	time(&end);
-	diagonalization_time = difftime(end,start);
-	num_OPv_calls = OPv_counter;
-
-//	if(verbose_diagonalize)
-//		eigenvalue_report();
-};
-*/
 
 template<typename T>
 void MatrixInterface<T>::Report(int num_print) const
@@ -360,6 +375,19 @@ void MatrixInterface<T>::CalculateResidual(EVector &Residual) const
 	}
 }
 
+
+template<typename T>
+T MatrixInterface<T>::GetVal(int m) const
+{
+	return Eigenvalues[m];
+}
+
+template<typename T>
+T MatrixInterface<T>::GetVec(int m, int i) const
+{
+	return Eigenvectors[A.rows()*m+i];
+}
+
 template<typename T>
 void MatrixInterface<T>::LUdecomp()
 {
@@ -372,7 +400,7 @@ void MatrixInterface<T>::LUdecomp()
 }
 
 template<typename T>
-void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector &B)
+void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector const &B)
 {
 	X = UMFsolver.solve(B);
 }
@@ -382,7 +410,8 @@ void MatrixInterface<T>::solve_Mx_equals_b(T *x, T const *b)
 {
 	Eigen::Map<      EVector> X(&x[0], A.rows());
 	Eigen::Map<const EVector> B(&b[0], A.rows());
-	solve_Mx_equals_b(X,B);
+	X = UMFsolver.solve(B);
+	//solve_Mx_equals_b(X,B);
 }
 
 

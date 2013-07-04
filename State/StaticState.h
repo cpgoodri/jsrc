@@ -89,11 +89,11 @@ public:
 //Constructors/Destructors and copy operators
 	CStaticState();
 	CStaticState(int _N);
-	CStaticState(const CStaticState &copy);
+	CStaticState(CStaticState const &copy);
 	
 	~CStaticState();
 
-	CStaticState<Dim> &operator=(const CStaticState<Dim> &copy);
+	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);
 
 //Set potential
 	void SetPotentialHarmonic(dbl epsilon=1.);
@@ -147,8 +147,8 @@ public:
 	void GetParticlePositionVirtual(dvec &, int i) const;
 	void GetDisplacement(int i, int j, dvec &displacement) const;
 	void GetDisplacementVirtual(int i, int j, dvec &displacement) const;
-	CBox<Dim> *GetBox();	
-	CPotential *GetPotential();
+	CBox<Dim> *GetBox() const;
+	CPotential *GetPotential() const;
 	dbl  GetSphereVolume() const;
 	dbl  GetPackingFraction() const;
 	dbl  GetVolume() const;
@@ -224,8 +224,10 @@ CStaticState<Dim>::CStaticState(int _N)
 }
 	
 template<int Dim>
-CStaticState<Dim>::CStaticState(const CStaticState &copy)
+CStaticState<Dim>::CStaticState(CStaticState<Dim> const &copy)
 {
+	(*this) = copy;
+	/*
 	N = copy.GetParticleNumber();
 	
 	Box = copy.GetBox()->copy(); //????????
@@ -233,6 +235,7 @@ CStaticState<Dim>::CStaticState(const CStaticState &copy)
 	
 	Positions = copy.GetPositions();
 	Radii = copy.GetRadii();
+	*/
 }
 
 template<int Dim>	
@@ -243,7 +246,7 @@ CStaticState<Dim>::~CStaticState()
 }
 
 template<int Dim>
-CStaticState<Dim> &CStaticState<Dim>::operator=(const CStaticState<Dim> &copy)
+CStaticState<Dim> &CStaticState<Dim>::operator=(CStaticState<Dim> const &copy)
 {
 	if(this != &copy)
 	{
@@ -653,13 +656,13 @@ void CStaticState<Dim>::GetDisplacementVirtual(int i,int j,Eigen::Matrix<dbl,Dim
 }
 
 template <int Dim>
-CBox<Dim> *CStaticState<Dim>::GetBox()
+CBox<Dim> *CStaticState<Dim>::GetBox() const
 {
 	return Box;
 }
 
 template <int Dim>
-CPotential *CStaticState<Dim>::GetPotential()
+CPotential *CStaticState<Dim>::GetPotential() const
 {
 	return Potential;
 }
