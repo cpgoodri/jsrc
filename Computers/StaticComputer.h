@@ -99,8 +99,8 @@ public:
 	void ComputeBondList(CBondList<Dim> &bonds);
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 
-	void StdPrepareSystem();
-	void StdPrepareSystem(vector<bool> const &fixed);
+	void StdPrepareSystem(bool verbose = true);
+	void StdPrepareSystem(vector<bool> const &fixed, bool verbose = true);
 	void CalculateStdData(bool CalcCijkl = true, bool CalcHess = true);
 	void CalculateStdData(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
 	void CalculateStdData_Unstressed(bool CalcCijkl=true, bool CalcHess = true);
@@ -132,7 +132,7 @@ public:
 	void UnsetFixedDof();
 
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
-	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
+	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol);
 	void Move(Eigen::VectorXd const &step);
 	dbl GetMinimizationTimeScale() const;
     
@@ -267,17 +267,17 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 
 
 template <int Dim>
-void CStaticComputer<Dim>::StdPrepareSystem()
+void CStaticComputer<Dim>::StdPrepareSystem(bool verbose)
 {
 	std::vector<bool> fixed; fixed.assign(State.GetParticleNumber(),false);
-	StdPrepareSystem(fixed);
+	StdPrepareSystem(fixed,verbose);
 }
 
 template <int Dim>
-void CStaticComputer<Dim>::StdPrepareSystem(vector<bool> const &fixed)
+void CStaticComputer<Dim>::StdPrepareSystem(vector<bool> const &fixed, bool verbose)
 {
-	ComputeBondList(Bonds);						//Use the member variable derived from CBaseComputer
-	Bonds.RemoveRattlers(RattlerMap, fixed, Dim+1, true);	//Remove rattlers
+	ComputeBondList(Bonds);									//Use the member variable derived from CBaseComputer
+	Bonds.RemoveRattlers(RattlerMap, fixed, Dim+1, verbose);	//Remove rattlers
 }
 
 template <int Dim>
@@ -342,16 +342,20 @@ void CStaticComputer<Dim>::Evaluate(Eigen::VectorXd &grad, dbl &fx)
 };
 
 template <int Dim>
-bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol) 
+bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol) 
 {
+//	const int print_iter = 1000;
 	dbl gradNorm = grad.norm();
 	dbl max_grad = max_abs_element(grad.size(), grad.data());
 	bool converged = (max_grad < tol)?true:false;
 	if(converged){ printf("converged\n"); fflush(stdout);}
-	if(iteration%1000==0 || converged)
+	if(print_iter > 0)
 	{
-		printf("% 11i   %22.20e   % e   % e\n", iteration, fx, gradNorm, max_grad);
-		fflush(stdout);
+		if(iteration%print_iter==0 || converged)
+		{
+			printf("% 11i   %22.20e   % e   % e\n", iteration, fx, gradNorm, max_grad);
+			fflush(stdout);
+		}
 	}
 	return converged;
 };

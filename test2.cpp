@@ -227,23 +227,19 @@ void test2(int N, dbl phi, int seed)
 	CStaticComputer<DIM> Computer(System);
 	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
 
-	System.SetBoxPeriodic(DIM);
-	System.SetPackingFraction(phi);
-	CStaticComputer<DIM> Computer2(System);
-
 	//Prepare system for standard calculations (this sets the internal BondList and removes rattlers).
-	Computer2.StdPrepareSystem();
+	Computer.StdPrepareSystem();
 
 	//Calculate info
 	printf("\nCalculate data for stressed system-->\n");
-	Computer2.CalculateStdData(); //Have option to not write down hessian.
-	Computer2.Data.Print();
-	Computer2.Data.H.VDiagonalize();
+	Computer.CalculateStdData(); //Have option to not write down hessian.
+	Computer.Data.Print();
+	Computer.Data.H.VDiagonalize();
 
 	//Calculate unstressed info
 	printf("\nCalculate data for unstressed system-->\n");
 	CStdData<DIM> unstressedData;
-	Computer2.CalculateStdData_Unstressed(unstressedData);
+	Computer.CalculateStdData_Unstressed(unstressedData);
 	unstressedData.Print();
 	unstressedData.H.VDiagonalize();
 }
@@ -483,8 +479,8 @@ int main(int argc, char* argv[])
 
 //	test_fixed(N, phi, r, NFixedParticles);
 
-//	test1(N, phi, r);
-	test2(N, phi, r);
+	test1(N, phi, r);
+//	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);
 	//SamTest(N, Lp, r);

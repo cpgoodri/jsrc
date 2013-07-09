@@ -252,11 +252,13 @@ CStaticState<Dim> &CStaticState<Dim>::operator=(CStaticState<Dim> const &copy)
 	{
 		N = copy.GetParticleNumber();
 		
-		Box = copy.GetBox()->copy();
-		Potential = copy.GetPotential()->copy();
+		Box = copy.GetBox()->clone(); //clone() gives a deep copy
+		Potential = copy.GetPotential()->clone();
 		
-		Positions = copy.GetPositions();
-		Radii = copy.GetRadii();
+		copy.GetPositionsViutual(Positions);
+		copy.GetRadii(Radii);
+//		Positions = copy.GetPositions();
+//		Radii = copy.GetRadii();
 	}
 	return *this;
 }
@@ -558,7 +560,10 @@ void CStaticState<Dim>::SetBox(CBox<Dim> *t_Box)
 template <int Dim>
 void CStaticState<Dim>::SetPotential(CPotential *t_Potential)
 {
-	Potential = t_Potential;
+	if(Potential) delete Potential;
+	//Potential = t_Potential;
+	assert(false);
+	Potential = t_Potential->clone();
 }
 
 template <int Dim>

@@ -106,9 +106,9 @@ void test3(STATE &s)
 	//				H.VDiagonalize   ();
 	//				H.VDiagonalize   (100);
 	//				H. Diagonalize_SI();
-	//				H. Diagonalize_SI(100);
+					H. Diagonalize_SI(100);
 	//				H.VDiagonalize_SI();
-					H.VDiagonalize_SI(100);
+	//				H.VDiagonalize_SI(100);
 	//
 	//Additionally, one can choose to only compute the eigenvectors by calling
 	//				H.SetComputeVecs(false);
@@ -119,6 +119,8 @@ void test3(STATE &s)
 	//	- Easily calculate the ENTIRE spectrum... this might not be necessary bc probably only applicable to small systems when Eigen dense diagonalization would suffice
 	//	- Diagonalize by first converting to an Eigen dense matrix.
 	//
+	//
+	H.Report(100);
 
 }
 

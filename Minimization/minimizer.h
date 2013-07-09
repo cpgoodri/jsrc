@@ -28,9 +28,9 @@ private:
 
 public:
 	//!Constructor
-	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type=NONE, dbl tol=1e-12, int max_iterations=-1);
+	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type=NONE, dbl tol=1e-12, int max_iterations=-1, int print_iter=1000);
 	//!Simple minimization with the FIRE algorithm
-	void minimizeFIRE(dbl tol=1e-12, int max_iterations = -1, dbl delta_t_start=-1.);
+	void minimizeFIRE(dbl tol=1e-12, int max_iterations = -1, dbl delta_t_start=-1., int print_iter=1000);
 };
 
 /**
@@ -44,7 +44,7 @@ public:
  *	@param[in] max_iterations Maximum number of iterations. Unlimited if less than or equal to zero. default = -1.
  */
 template<int Dim>
-CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type, dbl tol, int max_iterations)
+CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type, dbl tol, int max_iterations, int print_iter)
 	: pComputer(&TargetComputer)
 {
 	N_dof = pComputer->GetNdof();
@@ -54,7 +54,7 @@ CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int 
 			break;
 		case FAST:
 		case FIRE:
-			minimizeFIRE(tol, max_iterations);
+			minimizeFIRE(tol, max_iterations,-1,print_iter);
 			break;
 	}
 };
@@ -67,7 +67,7 @@ CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int 
  *	@param[in] delta_t_start initial MD time step. Set automatically from the Computer if less than or equal to zero. default = -1.
  */
 template<int Dim>
-void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, int max_iterations, dbl delta_t_start)
+void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, int max_iterations, dbl delta_t_start, int print_iter)
 {
 	typedef CMinimizerFIRE< CBaseComputer<Dim> > MINIMIZER;
 	MINIMIZER mm(N_dof);
@@ -84,6 +84,7 @@ void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, int max_iterations, dbl delta_
 	}
 	mm.set_FIRE_delta_t_start(delta_t_start);
 	mm.set_FIRE_delta_t_max(10.*delta_t_start);
+	mm.set_print_iter(print_iter);
 
 	mm.minimize(tol);
 };

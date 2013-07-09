@@ -23,7 +23,7 @@ public:
 	};
 
 	typedef void (T::*evaluate_t)		(Eigen::VectorXd &grad, dbl &fx);
-	typedef bool (T::*progress_t)		(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol);
+	typedef bool (T::*progress_t)		(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol);
 	typedef void (T::*move_t)			(Eigen::VectorXd const &step);
 	typedef void (T::*report_header_t)	();
 
@@ -41,6 +41,7 @@ private:
 	dbl  FIRE_PARAM_f_alpha;
 	dbl  FIRE_PARAM_delta_t_start;
 	dbl  FIRE_PARAM_delta_t_max;
+	int  IPARAM_print_iter;
 	bool IPARAM_do_not_use_report_header;	//This is set true if the user does not pass a report_header_t function.
 	bool IPARAM_functions_set;
 
@@ -58,7 +59,7 @@ private:
 	};
 	bool progress(Eigen::VectorXd const &grad, dbl fx, int iteration, dbl tol)
 	{
-		return ((*obj).*(progress_fn))(grad, fx, iteration, tol);
+		return ((*obj).*(progress_fn))(grad, fx, iteration, IPARAM_print_iter, tol);
 	};
 	void move(Eigen::VectorXd const &step)
 	{
@@ -66,7 +67,8 @@ private:
 	};
 	void report_header()
 	{
-		((*obj).*(report_header_fn))();
+		if(IPARAM_print_iter>0)
+			((*obj).*(report_header_fn))();
 	};
 
 public:
@@ -80,6 +82,7 @@ public:
 	//Set parameters
 	void set_max_iterations(int imax)					{ PARAM_max_iterations					= imax;	
 														  PARAM_no_max_iterations				= false;			};
+	void set_print_iter(int _print_iter)				{ IPARAM_print_iter						= _print_iter;		};
 	void set_no_max_iterations(bool b=true)				{ PARAM_no_max_iterations				= b;				};
 	void set_tol(dbl t)									{ PARAM_convergence_tol					= t;				};
 	void set_FIRE_delta_t_start(dbl t)					{ FIRE_PARAM_delta_t_start				= t;				};
@@ -98,6 +101,7 @@ public:
 		FIRE_PARAM_delta_t_start	= 1e-4;
 		FIRE_PARAM_delta_t_max		= 10.*FIRE_PARAM_delta_t_start;
 		
+		IPARAM_print_iter			= 1000;
 		IPARAM_do_not_use_report_header = false;
 		IPARAM_functions_set = false;
 	};
