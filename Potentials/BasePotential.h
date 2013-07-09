@@ -102,8 +102,9 @@ public:
 ///@{
 	//!Get the maximum distance between two particles of unit diameter such that they interact
 	virtual dbl ComputeSupport() const = 0;
-	//static map<string,CPotential*> CreateMap();
 	
+	//!Set sigma and determine if rad1, rad2 and rlen2 are such that there is overlap
+	virtual bool Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const = 0;
 ///@}
 };
 

@@ -78,6 +78,9 @@ public:
 	//!Get the maximum distance between two particles of unit diameter such that they interact
 	dbl ComputeSupport() const;
 
+	//!Set sigma and determine if rad1, rad2 and rlen2 are such that there is overlap
+	bool Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const;
+
 ///@}
 };
 
@@ -177,6 +180,12 @@ void CHarmonicPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, db
 dbl CHarmonicPotential::ComputeSupport() const
 {
 	return 1.;
+}
+
+bool CHarmonicPotential::Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const
+{
+	sigma = rad1 + rad2;
+	return (rlen2<sigma*sigma);
 }
 
 

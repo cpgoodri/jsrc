@@ -218,6 +218,15 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 			if((*it)>i)
 			{
 				State.GetDisplacement(i,(*it),Displacement);
+				rlen2 = Displacement.squaredNorm();
+				if(State.GetPotential()->Overlapping(State.GetRadius(i),State.GetRadius((*it)), rlen2, sigma))
+				{
+					rlen = sqrt(rlen2);
+					State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
+					bonds.AddBond( CBond<Dim>(i, (*it), rlen, E, g, k, Displacement) );
+				}
+				/*
+				State.GetDisplacement(i,(*it),Displacement);
 				sigma = State.GetRadius(i) + State.GetRadius((*it));
 				rlen2 = Displacement.squaredNorm();
 				if(rlen2 < sigma*sigma)
@@ -227,11 +236,11 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 					bonds.AddBond( CBond<Dim>(i, (*it), rlen, E, g, k, Displacement) );
 					//bonds.AddBond( CBond<Dim>(i, (*it), sigma, rlen, E, g, k, Displacement) );
 				}
+				*/
 			}
 		}
 	}
 	bonds.SetVolume(GetVolume());
-	
 }
 
 template <int Dim>
@@ -244,6 +253,15 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 		for(int j = i+1 ; j < State.GetParticleNumber() ; j++)
 		{
 			State.GetDisplacement(i,j,Displacement);
+			rlen2 = Displacement.squaredNorm();
+			if(State.GetPotential()->Overlapping(State.GetRadius(i),State.GetRadius(j), rlen2, sigma))
+			{
+				rlen = sqrt(rlen2);
+				State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
+				bonds.AddBond( CBond<Dim>(i, j, rlen, E, g, k, Displacement) );
+			}
+			/*
+			State.GetDisplacement(i,j,Displacement);
 			sigma = State.GetRadius(i) + State.GetRadius(j);
 			rlen2 = Displacement.squaredNorm();
 			if(rlen2 < sigma*sigma)
@@ -253,6 +271,7 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 				bonds.AddBond( CBond<Dim>(i, j, rlen, E, g, k, Displacement) );
 				//bonds.AddBond( CBond<Dim>(i, j, sigma, rlen, E, g, k, Displacement) );
 			}
+			*/
 		}
 	//bonds.Volume = 0.;
 	bonds.SetVolume(GetVolume());
