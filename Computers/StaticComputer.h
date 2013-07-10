@@ -73,6 +73,7 @@ private:
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 	CStaticState<Dim> &State;
 	CGrid<Dim> Grid;
+	bool UseGrid;
 
 	bool FixDof;
 	vector<bool> FixedDof;
@@ -88,7 +89,7 @@ public:
 	
 		
 //get and set the state
-	const CStaticState<Dim> &GetState() const;
+	CStaticState<Dim> &GetState() const;
 	void SetState(CStaticState<Dim> & State);
 
 //Get generic info from State
@@ -97,7 +98,9 @@ public:
 
 //Compute the bond list
 	void ComputeBondList(CBondList<Dim> &bonds);
+	void ComputeBondList_Grid(CBondList<Dim> &bonds);
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
+	void SetUseGrid(bool usegrid=true);
 
 	void StdPrepareSystem(bool verbose = true);
 	void StdPrepareSystem(vector<bool> const &fixed, bool verbose = true);
@@ -150,19 +153,19 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer() : FixDof(false)
+CStaticComputer<Dim>::CStaticComputer() : FixDof(false), UseGrid(true)
 {
 }
 
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer(CStaticState<Dim> &_State) : State(_State), Grid(&State), FixDof(false)
+CStaticComputer<Dim>::CStaticComputer(CStaticState<Dim> &_State) : State(_State), Grid(&State), FixDof(false), UseGrid(true)
 {	
 	Grid.Allocate();
 }
 
 template <int Dim>
-CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State(_Copy.State), Grid(&State), FixDof(_Copy.FixDof), FixedDof(_Copy.FixedDof)
+CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State(_Copy.State), Grid(&State), FixDof(_Copy.FixDof), FixedDof(_Copy.FixedDof), UseGrid(_Copy.UseGrid)
 {
 	Grid.Allocate();
 }
@@ -170,7 +173,7 @@ CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State
 
 //get and set the state
 template <int Dim>
-const CStaticState<Dim> &CStaticComputer<Dim>::GetState() const
+CStaticState<Dim> &CStaticComputer<Dim>::GetState() const
 {
 	return State;
 }
@@ -201,9 +204,24 @@ inline dbl CStaticComputer<Dim>::GetMinimizationTimeScale() const
 	return avgRad; //This is emperical!!! NOT GENERAL!
 }
 
+template <int Dim>
+void CStaticComputer<Dim>::SetUseGrid(bool usegrid)
+{
+	UseGrid = usegrid;
+}
+
 //Compute the bond list
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
+{
+	if(UseGrid)
+		ComputeBondList_Grid(bonds);
+	else
+		ComputeBondList_NoGrid(bonds);
+}
+
+template <int Dim>
+void CStaticComputer<Dim>::ComputeBondList_Grid(CBondList<Dim> &bonds)
 {
 	Grid.Construct();
 	//Grid.PrintGrid();

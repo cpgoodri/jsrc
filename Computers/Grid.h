@@ -237,6 +237,7 @@ const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 	if(this != &copy)
 	{
 		printf("WARNING: copying CGrid is not implemented correctly.\n");
+		assert(false);
 		ClearLists();
 		State = copy.State;
 		SetN(State->GetParticleNumber());
@@ -348,6 +349,8 @@ void CGrid<Dim>::Construct()
 		//We should be able to do this without copying the particle positions
 		State->GetParticlePositionVirtual(PosTemp, i);
 		Cell_Index = CoordinatesToCell(PosTemp);
+		assert(Cell_Index >= 0);
+		assert(Cell_Index <  TotalCells);
 		
 		//Add the particle to that cell
 		OccupancyList[i] = CellList[Cell_Index];
