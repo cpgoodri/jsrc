@@ -51,7 +51,7 @@
 
 #include "../Resources/std_include.h"
 #include <Eigen/LU>
-#include "netcdfcpp.h"
+//#include "netcdfcpp.h"
 
 namespace LiuJamming
 {
@@ -64,6 +64,7 @@ namespace LiuJamming
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+//!Abstract base class for objects that handle boundary conditions.
 template <int Dim>
 class CBox
 {
@@ -72,63 +73,50 @@ private:
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 	typedef Eigen::VectorBlock<Eigen::VectorXd,Dim> dvecBlock;
 
-//global variables to read box configurations
-	static std::map<string,CBox<Dim>*> BoxTypes;
+	static std::map<string,CBox<Dim>*> BoxTypes; //!<Global map to reference box objects by name
 
 public:
-	//enum{SQUARE, RECTANGULAR, SYMMETRIC_QUADRILATERAL};
 	enum{RECTANGULAR, SYMMETRIC_QUADRILATERAL};
 protected:
-	int BoxSymmetry;
-
-private:
-//Functions to check that the correct dimensions, variables, and attributes are present
-//in a netCDF file.
-	static bool CheckNetCDF(const NcFile &file);
-	static void PopulateNetCDF(NcFile &file);
-	
-public:
-//global functions to read box configurations
-	static CBox *Read(const NcFile &file,int record);
-	static void AddBoxType(string type,CBox *box);
+	int BoxSymmetry; //!<Flag that potentially increases efficiency
 
 private:
 //variables specifying the transformation
-	dmat Transformation; 
-	dmat Inverse_Transformation;
+	dmat Transformation;			//!<Transformation matrix
+	dmat Inverse_Transformation;	//!<Inverse transformation matrix
 	
 public:
 //constructors and copy operators
-	CBox();
-	CBox(const dmat Trans);
-	CBox(dbl sx, dbl sy, dbl sz);
-	CBox(const CBox &box);
-	
-	const CBox &operator=(const CBox &box);
+	CBox(int symmetry=SYMMETRIC_QUADRILATERAL);						//!<Default constructor
+	CBox(const dmat &Trans, int symmetry=SYMMETRIC_QUADRILATERAL);	//!<Construct from transformation matrix
+	CBox(const CBox &box);											//!<Copy constructor
+	const CBox &operator=(const CBox &box);							//!<Copy operator
 
 	
 //functions to read and write box configurations
 	//static string GetName() const = 0;
 	virtual string DataToString() const = 0;
  	virtual void StringToData(string Data) = 0;
- 	virtual CBox *Create() = 0;
-	void Write(NcFile &file,int record); 
-	
+ 	virtual CBox* Clone() const = 0;
+
+	void SetSymmetry(int symmetry);	//!<Set the assumed box symmetry
+	int  GetSymmetry() const;		//!<Get the assumed box symmetry
+
 //functions using the transformation matrix
 	void SetTransformation(dmat &Trans);
-	void GetTransformation(dmat &Trans);
+	void GetTransformation(dmat &Trans) const;
+	void GetInverseTransformation(dmat &ITrans) const;
 	void Transform(dvec &Point) const;
 	void Transform(Eigen::VectorXd &Points) const;
 	void InverseTransform(dvec &Point) const;
 	void InverseTransform(Eigen::VectorXd &Points) const;
-	void InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement);
+	void InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement) const;
 
 //set and get the volume
-	virtual void SetVolume(dbl V);
-	virtual dbl CalculateVolume() const;
+	virtual void SetVolume(dbl V);			//!<Set the volume of the box
+	virtual dbl CalculateVolume() const;	//!<Calculate the volume of the box
 
-//get a list of the periodic dimensions
-	virtual void GetPeriodicDimensions(std::vector<int> &) const = 0;
+	virtual void GetPeriodicDimensions(std::vector<int> &) const = 0; //!<get a list of the periodic dimensions
 	
 //functions involving the boundary
 	virtual void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const = 0;
@@ -152,6 +140,7 @@ std::map<string,CBox<Dim>*> CBox<Dim>::BoxTypes;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+/*
 //global functions to read box configurations
 template <int Dim>
 CBox<Dim> *CBox<Dim>::Read(const NcFile &file,int record)
@@ -187,108 +176,54 @@ CBox<Dim> *CBox<Dim>::Read(const NcFile &file,int record)
 	
 	return box;
 }
+*/
 
-template <int Dim>
-void CBox<Dim>::AddBoxType(string type,CBox<Dim> *box)
-{
-	BoxTypes[type] = box;
-}
-
-//Functions to check that the correct dimensions, variables, and attributes are present
-//in a netCDF file.
-template <int Dim>
-bool CBox<Dim>::CheckNetCDF(const NcFile &file)
-{
-	return (file.get_att("Box_Populated")!=NULL);
-}
-
-//NOTE: at the moment this assumes that the box class will only ever be saved through the system class. Is this a good assumption?
-template <int Dim>
-void CBox<Dim>::PopulateNetCDF(NcFile &file)
-{
-	NcDim *recorddim = file.get_dim("Records");
-	NcDim *dimdim = file.get_dim("System_Dimension");
-	NcDim *datadim = file.get_dim("Data_Size");
-	if(datadim==NULL)
-		datadim = file.add_dim("Data_Size",256);
-
-	file.add_att("Box_Populated",1);
-
-	file.add_var("Box_Transformation",ncDouble,recorddim,dimdim,dimdim);
-	file.add_var("Box_Data",ncChar,recorddim,datadim);
-}
-	
 //constructors and copy operators
 template <int Dim>
-CBox<Dim>::CBox()
+CBox<Dim>::CBox(int symmetry)
 {
 	Transformation = dmat::Identity();
 	Inverse_Transformation = dmat::Identity();
-	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
+	BoxSymmetry = symmetry;
 }
 
 template <int Dim>
-CBox<Dim>::CBox(const dmat Trans)
+CBox<Dim>::CBox(const dmat &Trans, int symmetry)
 {
 	Transformation = Trans;
 	Inverse_Transformation = Transformation.inverse();
-	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
+	BoxSymmetry = symmetry;
 }
 	
-template<int Dim>
-CBox<Dim>::CBox(dbl sx, dbl sy, dbl sz)
-{
-	Transformation = dmat::Identity();
-	Inverse_Transformation = Transformation.inverse();
-	BoxSymmetry = SYMMETRIC_QUADRILATERAL;
-}
-
 template <int Dim>
-CBox<Dim>::CBox(const CBox &box) : Transformation(box.Transformation) 
+CBox<Dim>::CBox(const CBox &box)
 {
-	Inverse_Transformation = Transformation.inverse();
-	BoxSymmetry = box.BoxSymmetry;
+	*this = box;
 }
 
 template <int Dim> 
-const CBox<Dim> &CBox<Dim>::operator=(const CBox<Dim> &box)
+const CBox<Dim>& CBox<Dim>::operator=(const CBox<Dim> &box)
 {
-	Transformation = box.GetTransformation();
-	Inverse_Transformation = Transformation.inverse();
-	BoxSymmetry = box.BoxSymmetry;
+	if(this != &box)
+	{
+		box.GetTransformation(Transformation);
+		Inverse_Transformation = Transformation.inverse();
+		BoxSymmetry = box.BoxSymmetry;
+	}
+	return *this;
 }
 
-//functions to write box configurations
 template <int Dim>
-void CBox<Dim>::Write(NcFile &file,int record)
+void CBox<Dim>::SetSymmetry(int symmetry)
 {
-	cout << "Saving box.\n";
-	if(!CheckNetCDF(file))
-		PopulateNetCDF(file);
-		
-	if(Dim!=file.get_dim("System_Dimension")->size())
-		throw(CException("CBox<Dim>::WriteBox","Attempting to read a box from a record has an inconsistent nubmer of dimensions."));
-	
-	if(record>file.get_dim("Records")->size())
-		throw(CException("CBox<Dim>::WriteBox","Attempting to read a box from a record that does not exist."));
-	
-	NcVar *TransVar = file.get_var("Box_Transformation");
-	
-	cout << "Writing transformation.\n";
-	
-	TransVar->set_cur(record);
-	TransVar->put(Transformation.data(),1,Dim,Dim);
-	
-	cout << "Writing box data.\n";
-	
-	NcVar *DataVar = file.get_var("Box_Data");
-	string str_data = DataToString();
-	DataVar->set_cur(record);
-	DataVar->put(str_data.c_str(),1,str_data.size());
+	BoxSymmetry = symmetry;
 }
 
-	
-//functions to read box configurations
+template <int Dim>
+int  CBox<Dim>::GetSymmetry() const
+{
+	return BoxSymmetry;
+}
 	
 //functions using the transformation matrix
 template <int Dim>
@@ -299,9 +234,15 @@ void CBox<Dim>::SetTransformation(dmat &Trans)
 }
 
 template <int Dim>
-void CBox<Dim>::GetTransformation(dmat &Trans)
+void CBox<Dim>::GetTransformation(dmat &Trans) const
 {
 	Trans = Transformation;
+}
+
+template <int Dim>
+void CBox<Dim>::GetInverseTransformation(dmat &ITrans) const
+{
+	ITrans = Inverse_Transformation;
 }
 
 template <int Dim>
@@ -365,10 +306,9 @@ inline void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
 }
 
 template <int Dim>
-void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement)
+void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::VectorXd &t_Displacement) const
 {
 	dvec Displacement;
-	//int np = Points.cols()/Dim;
 	int np = Points.size()/Dim;
 	switch(BoxSymmetry)
 	{

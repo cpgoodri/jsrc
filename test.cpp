@@ -124,11 +124,22 @@ int SamTest(int N=32, dbl Lp=-1.0, int rec=0)
 }
 */
 
+void test0(int N, dbl phi, int seed)
+{
+	//Create the system
+	CStaticState<DIM> System(N);
+	System.RandomizePositions(seed);
+	System.SetRadiiPolyUniform();
+	System.SetPackingFraction(phi);
+
+	//Minimize the energy:
+	System.AssumeRectangularSymmetry(); //This gives a slight performance boost.
+	CStaticComputer<DIM> Computer(System);
+	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
+}
+
 void test1(int N, dbl phi, int seed)
 {
-	//You still need to register boxes... This will change.
-//	RegisterBoxes<DIM>();
-
 	//Create the system
 	CStaticState<DIM> System(N);
 
@@ -214,9 +225,6 @@ void test1(int N, dbl phi, int seed)
 
 void test2(int N, dbl phi, int seed)
 {
-	//You still need to register boxes... This will change.
-//	RegisterBoxes<DIM>();
-
 	//Create the system
 	CStaticState<DIM> System(N);
 	System.RandomizePositions(seed);
@@ -483,8 +491,9 @@ int main(int argc, char* argv[])
 
 //	test_fixed(N, phi, r, NFixedParticles);
 
+	test0(N, phi, r);
 //	test1(N, phi, r);
-	test2(N, phi, r);
+//	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);
 	//SamTest(N, Lp, r);

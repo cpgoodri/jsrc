@@ -25,17 +25,17 @@ public:
 
 //! @name Constructors and Operators
 ///@{
-	CBond(int _i=0, int _j=0);
-	CBond(int _i, int _j, dbl _rlen, dbl _E, dbl _g, dbl _k, const dvec &_r);
-	CBond(const CBond<Dim> &src);
-	CBond<Dim>& operator=(const CBond<Dim> &src);
+	CBond(int _i=0, int _j=0);													//!<Default constructor
+	CBond(int _i, int _j, dbl _rlen, dbl _E, dbl _g, dbl _k, const dvec &_r);	//!<Constructor with full data
+	CBond(const CBond<Dim> &src);												//!<Copy constructor
+	CBond<Dim>& operator=(const CBond<Dim> &src);								//!<Copy operator
 
 ///@}
 
 //! @name Misc.
 ///@{
-	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const; //!<Calculate blocks for the hessian.
-	void print() const;	//!<Print the bond to the terminal.
+	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const;						//!<Calculate blocks for the hessian.
+	void print() const;															//!<Print the bond to the terminal.
 
 ///@}
 };

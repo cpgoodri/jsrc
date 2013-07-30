@@ -16,7 +16,7 @@ namespace LiuJamming
 //! Class to store a list of bonds.
 
 /*!
- * This class stores a list of bonds and provides numerous functions for making static calculation,
+ * This class stores a list of bonds and provides numerous functions for making static calculations,
  * such as computing the energy, gradient and the hessian matrix. It also provides functions for
  * removing rattlers.
  */
@@ -65,10 +65,10 @@ public:
 
 //! @name Bond Manipulation
 ///@{
-	void CalculateNeighbors(vector< vector<int> > &nbrs) const;	//!<Get a list of the neighbors of each particle
-	void RemoveBonds(vector<bool> const &BondsToRemove); //!<Remove bonds from the list
-	void RemoveBondsAccordingToMap(index_map const &map); //!<Remove any bonds that involve a node that is removed from the index_map.
-	void UpdateBondIndices(index_map const &map);	//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
+	void CalculateNeighbors(vector< vector<int> > &nbrs) const;		//!<Get a list of the neighbors of each particle
+	void RemoveBonds(vector<bool> const &BondsToRemove);			//!<Remove bonds from the list
+	void RemoveBondsAccordingToMap(index_map const &map);			//!<Remove any bonds that involve a node that is removed from the index_map.
+	void UpdateBondIndices(index_map const &map);					//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
 	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const; //!<Identify nodes that are not fixed and are involved in less than c bonds.
 	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const; //!<Identify rattlers assuming no fixed nodes.
 	void RemoveRattlers(index_map &map, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false);	//!<Remove rattlers (i.e. nodes with less than c bonds), and return the corresponding index_map.

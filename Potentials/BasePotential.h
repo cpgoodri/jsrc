@@ -41,7 +41,7 @@
 #include "../Resources/std_include.h"
 #include "../Resources/Exception.h"
 #include "../Resources/Resources.h"
-#include "netcdfcpp.h"
+//#include "netcdfcpp.h"
 
 namespace LiuJamming
 {
@@ -60,32 +60,21 @@ using namespace std;
 class CPotential
 {
 private:
-//global variables to read box configurations
-	static std::map<string,CPotential*> PotentialTypes;
+	static std::map<string,CPotential*> PotentialTypes; //!<Global map to reference potentials by name
 
-//Functions to check that the correct dimensions, variables, and attributes are present
-//in a netCDF file.
-	static bool CheckNetCDF(const NcFile &file);
-	static void PopulateNetCDF(NcFile &file);
-	
 public:
 //! @name Global functions to read and write
 ///@{
-	static CPotential *Read(const NcFile &file,int record);
-	static void AddPotentialType(string type,CPotential *pot);
-
+	static CPotential* SetFromString(string str);	//!<From an input string, return a pointer to a newly created potential object with the given parameter values
 ///@}
 
-//! @name Functions to read and write potential configurations
+//! @name Functions for setting, copying and saving
 ///@{
-	//static string GetName() const = 0;
-	virtual string DataToString() const = 0;
- 	virtual void StringToData(string Data) = 0;
- 	virtual CPotential *Create() = 0;
-	void Write(NcFile &file,int record); 
+	virtual string DataToString() const = 0;		//!<Return a string that contains the data necessary for the potential object (e.g. interaction strength, etc.)
+ 	virtual void StringToData(string Data) = 0;		//!<From an input string, set the data variables.
+ 	virtual CPotential* Clone() const = 0;			//!<Return a pointer to a newly created clone of the object.
 
 ///@}
-
 
 //! @name Functions to compute various derivatives
 ///@{
@@ -108,24 +97,6 @@ public:
 ///@}
 };
 
-/*
-//Include all the potential headers here. In a program, one only needs to include Potential.h
-#include "HarmonicPotential.h"
-
-static map<string,CPotential*> CreatePotentialMap()
-{
-	map<string,CPotential*> m;
-	CPotential *p;
-	
-	//For each potential...
-	p = new CHarmonicPotential(); m[CHarmonicPotential::GetName()] = p;
-
-	return m;
-}
-
-std::map<string,CPotential*> CPotential::PotentialTypes = CreatePotentialMap();
-*/
-
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -135,62 +106,12 @@ std::map<string,CPotential*> CPotential::PotentialTypes = CreatePotentialMap();
 /////////////////////////////////////////////////////////////////////////////////
 
 
-bool CPotential::CheckNetCDF(const NcFile &file)
+CPotential* CPotential::SetFromString(string str)
 {
-	return (file.get_att("Potential_Populated")!=NULL);
-}
-
-void CPotential::PopulateNetCDF(NcFile &file)
-{
-	file.add_att("Potential_Populated",1);
-	
-	NcDim *recorddim = file.get_dim("Records");
-	NcDim *datadim = file.get_dim("Data_Size");
-	if(datadim==NULL)
-		datadim = file.add_dim("Data_Size",256);
-	
-	file.add_var("Potential_Data",ncChar,recorddim,datadim);
-}
-	
-//global functions to read box configurations
-CPotential *CPotential::Read(const NcFile &file,int record)
-{
-	if(!CheckNetCDF(file))
-		throw(CException("CPotential<Dim>::ReadPotential","Attempting to read a box from a file that has no appropriate box data."));
-	
-	if(record>=file.get_dim("Records")->size())
-		throw(CException("CPotential<Dim>::ReadPotential","Attempting to read a box from a record that does not exist."));
-
-
-	NcVar * pot_var = file.get_var("Potential_Data");
-	pot_var->set_cur(record);
-	char t_str[256];
-	pot_var->get(t_str,1,256);
-	string str = t_str;
 	vector<string> split = SplitString(str,":");
-	CPotential *pot = PotentialTypes[split[0]]->Create();
+	CPotential *pot = PotentialTypes[split[0]]->Clone();
 	pot->StringToData(str);
 	return pot;
-}
-
-void CPotential::AddPotentialType(string type,CPotential *box)
-{
-	CPotential::PotentialTypes[type] = box;
-}
-
-
-//functions to write potential configurations
-void CPotential::Write(NcFile &file,int record)
-{
-	if(!CheckNetCDF(file))
-		PopulateNetCDF(file);
-	
-	if(record>file.get_dim("Records")->size())
-		throw(CException("CPotential<Dim>::ReadPotential","Attempting to read a box from a record that does not exist."));
- 
- 	NcVar * pot_var = file.get_var("Potential_Data");
-	pot_var->set_cur(record);
-	pot_var->put(DataToString().c_str(),1,DataToString().length());
 }
 
 

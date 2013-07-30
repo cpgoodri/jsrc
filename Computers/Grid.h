@@ -203,7 +203,7 @@ public:
 
 //Constructor and copy operators
 template <int Dim>
-CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s), OccupancyList(NULL), CellList(NULL), DualList(NULL)
+CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s), N(0), OccupancyList(NULL), CellList(NULL), DualList(NULL)
 {
 	ClearLists();
 	SetN(State->GetParticleNumber());
@@ -212,8 +212,9 @@ CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s), OccupancyList(NULL), CellLis
 //	DualList = NULL;
 }
 
+/*
 template <int Dim>
-CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
+CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State), N(0)
 {
 	ClearLists();
 	SetN(State->GetParticleNumber());
@@ -221,6 +222,7 @@ CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State)
 //	CellList = NULL;
 //	DualList = NULL;
 }
+*/
 
 template <int Dim>
 CGrid<Dim>::~CGrid()

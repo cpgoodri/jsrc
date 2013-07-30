@@ -49,16 +49,16 @@ public:
 ///@{
 	CHarmonicPotential();
 	CHarmonicPotential(dbl _e);
-	CHarmonicPotential(const CHarmonicPotential &box);
-	const CHarmonicPotential &operator=(const CHarmonicPotential &box);
+	CHarmonicPotential(const CHarmonicPotential &pot);
+	const CHarmonicPotential &operator=(const CHarmonicPotential &pot);
 ///@}
 
 //! @name Functions to read and write potential configurations
 ///@{
 	static string GetName();
-	string DataToString() const;
- 	void StringToData(string Data);
- 	CPotential *Create();
+	virtual string DataToString() const;
+ 	virtual void StringToData(string Data);
+ 	virtual CHarmonicPotential *Clone() const;
 	
 ///@}
 	
@@ -94,23 +94,23 @@ public:
 
 //constructors and copy operators
 CHarmonicPotential::CHarmonicPotential()
-{
-	epsilon = 1.0;
-}
+	: epsilon(1.0)
+{}
 
 CHarmonicPotential::CHarmonicPotential(dbl _e)
-{
-	epsilon = _e;
-}
+	: epsilon(_e)
+{}
 
-CHarmonicPotential::CHarmonicPotential(const CHarmonicPotential &pot) : epsilon(pot.epsilon), CPotential(pot)
-{
-}
+CHarmonicPotential::CHarmonicPotential(const CHarmonicPotential &pot) 
+	: epsilon(pot.epsilon)
+{}
 	
-const CHarmonicPotential &CHarmonicPotential::operator=(const CHarmonicPotential &pot)
+const CHarmonicPotential& CHarmonicPotential::operator=(const CHarmonicPotential &pot)
 {
-	epsilon = pot.epsilon;
-	CPotential::operator=(pot);
+	if(this != &pot)
+	{
+		epsilon = pot.epsilon;
+	}
 	return *this;
 }
 
@@ -124,8 +124,7 @@ string CHarmonicPotential::GetName()
 string CHarmonicPotential::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << epsilon;
-	//ss << "HarmonicPotential:" << epsilon;
+	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
 	return ss.str();
 }
 	
@@ -133,12 +132,13 @@ string CHarmonicPotential::DataToString() const
 void CHarmonicPotential::StringToData(string Data)
 {
 	vector<string> split = SplitString(Data,":");
-	epsilon = atof(split[1].c_str());
+	epsilon = ConvertHexStringToDbl(split[1]);
 }
- 
-CPotential *CHarmonicPotential::Create()
+
+//Clone the potential opbject and return a pointer to the new copy.
+CHarmonicPotential* CHarmonicPotential::Clone() const
 {
-	return new CHarmonicPotential();
+	return new CHarmonicPotential( *this );
 }
 	
 //functions to compute various derivatives

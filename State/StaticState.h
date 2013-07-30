@@ -51,7 +51,7 @@
 #include "../Potentials/Potentials.h" //This loads all the potentials
 #include "../Boundaries/Boxes.h"
 #include "../Boundaries/PeriodicBox.h"
-#include "netcdfcpp.h"
+//#include "netcdfcpp.h"
 #include "../Resources/MersenneTwister.h"
 
 namespace LiuJamming
@@ -65,6 +65,7 @@ namespace LiuJamming
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+//!Class to store data for a sphere packing, including positions, radii, box and potential
 template <int Dim>
 class CStaticState
 {
@@ -72,94 +73,94 @@ private:
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 
-	Eigen::VectorXd Positions;
-	Eigen::VectorXd Radii;
+	int N;							//!<Number of particles
+	Eigen::VectorXd Positions;		//!<dN vector of positions (in normalized coordinates)
+	Eigen::VectorXd Radii;			//!<N vector of radii (in real units)
 
-	int N;
-
-	CBox<Dim> *Box;
-	CPotential *Potential;
+	CBox<Dim> *Box;					//!<Pointer to a CBox object
+	CPotential *Potential;			//!<Pointer to a CPotential object
 		
 //Functions to check that the correct dimensions, variables, and attributes are present
 //in a netCDF file.
-	bool CheckNetCDF(const NcFile &file);
-	void PopulateNetCDF(NcFile &file);
+//	bool CheckNetCDF(const NcFile &file);
+//	void PopulateNetCDF(NcFile &file);
 	
 public:
 //Constructors/Destructors and copy operators
-	CStaticState();
-	CStaticState(int _N);
-	CStaticState(CStaticState const &copy);
-	
-	~CStaticState();
+	CStaticState();													//!<Default constructor
+	CStaticState(int _N);											//!<Primary constructor
+	CStaticState(CStaticState const &copy);							//!<Copy constructor
+	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);	//!<Copy operator
+	~CStaticState();												//!<Destructor
 
-	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);
 
 //Set potential
-	void SetPotentialHarmonic(dbl epsilon=1.);
-	void SetPotentialHertzian(dbl epsilon=1.);
+	void SetPotential(CPotential *t_Potential);	//!<Set the potential
+	void SetPotentialHarmonic(dbl epsilon=1.);	//!<Set the potential to be harmonic
+	void SetPotentialHertzian(dbl epsilon=1.);	//!<Set the potential to be hertzian
 
 //Set box
-	void SetBoxPeriodic(int NonPeriodicDim=0);
+	void SetBox(CBox<Dim> *t_Box);				//!<Set the box
+	void SetBoxPeriodic(int NonPeriodicDim=0);	//!<Set the box to be periodic
+	void AssumeRectangularSymmetry();			//!<Set the assumption that the box is rectangular
 
 //Functions to construct systems 
-	void RandomizePositions(long seed = 1);
-	void RandomizePositions(MTRand *random);
+	void RandomizePositions(long seed = 1);		//!<Randomize the positions using a new seed
+	void RandomizePositions(MTRand *random);	//!<Randomize the positions using a previously created random number generator
 //Set 2d lattices
-	void SetSquareLattice();
-	void SetSquareLattice(int Lx, int Ly);
-	void SetHexLattice();
+	void SetSquareLattice();					//!<Set positions to be in a square lattice (only in 2d)
+	void SetSquareLattice(int Lx, int Ly);		//!<Set positions to be in a square lattice (only in 2d)
+	void SetHexLattice();						//!<Set positions to be in a hexagonal lattice (only in 2d)
 //Set 3d lattices
-	void SetFCCLattice();
-	void SetBCCLattice();
+	void SetFCCLattice();						//!<Set positions to be in an FCC lattice (only in 3d)
+	void SetBCCLattice();						//!<Set positions to be in a BCC lattice (only in 3d)
 
 	void SetRadiiMono();										//!<Set all diameters to 1.
-	void SetRadiiBi(dbl FracSmall = 0.5, dbl SizeRatio = 1.4);	//!<Frac small is the fraction of small particles, SizeRatio is the ratio of largest radii to the smallest.
-	void SetRadiiPolyUniform(dbl SizeRatio = 1.4);				//!<SizeRatio is the ratio of the largest to the smallest.
+	void SetRadiiBi(dbl FracSmall = 0.5, dbl SizeRatio = 1.4);	//!<Set bidisperse size distribution, with average diameter of 1.
+	void SetRadiiPolyUniform(dbl SizeRatio = 1.4);				//!<Set uniform polydisperse size distribution, with average diameter of 1.
 	
 //Functions to read and write systems
-	void Read(const NcFile &File,int Record);
-	void Write(NcFile &File,int Record);
+//	void Read(const NcFile &File,int Record);
+//	void Write(NcFile &File,int Record);
 
 //Functions to set properties of the system
-	void SetRadii(const Eigen::VectorXd &t_Radii);
-	void SetRadius(int i,dbl r);
-	void SetPositions(const Eigen::VectorXd &t_Positions);
+	void SetRadii(const Eigen::VectorXd &t_Radii);	//!<Set all the radii
+	void SetRadius(int i,dbl r);					//!<Set an individual radius
+	void SetPackingFraction(dbl phi);				//!<Set the packing fraction without changing the relative radii
+
+	void SetPositions		(const Eigen::VectorXd &t_Positions);		//!<Set particle positions
 	void SetPositionsVirtual(const Eigen::VectorXd &t_Positions);
-	void SetParticlePosition(const dvec &t_Positions,int i);
-	void SetParticlePositionVirtual(const dvec &t_Positions,int i);
-	void MoveParticles(const Eigen::VectorXd &t_Displacement);	
+	void SetParticlePosition		(const dvec &t_Position,int i);		//!<Set an individual particle's position
+	void SetParticlePositionVirtual	(const dvec &t_Position,int i);
+	
+	void MoveParticles(const Eigen::VectorXd &t_Displacement);			//!<Move the particles
 	void MoveParticlesVirtual(const Eigen::VectorXd &t_Displacement);
-	void SetBox(CBox<Dim> *t_Box);
-	void SetPotential(CPotential *t_Potential);
-	void SetPackingFraction(dbl phi);
 
 //Functions to get properties of the system
-	void GetRadii(Eigen::VectorXd &) const;	
-	dbl GetRadius(int i) const;
-	dbl GetMinimumRadius() const;
-	dbl GetMaximumRadius() const;
-	dbl GetAverageRadius() const;
+	void GetRadii(Eigen::VectorXd &) const;		//!<Copy the vector of radii
+	dbl GetRadius(int i) const;					//!<Get an individual radius
+	dbl GetMinimumRadius() const;				//!<Get the minimum radius
+	dbl GetMaximumRadius() const;				//!<Get the maximum radius
+	dbl GetAverageRadius() const;				//!<Get the average radius
 
-	void GetPositions(Eigen::VectorXd &) const;
+	void GetPositions		(Eigen::VectorXd &) const;		//!<Copy the vector of positions
 	void GetPositionsVirtual(Eigen::VectorXd &) const;
-	void GetParticlePosition(dvec &, int i) const;
-	void GetParticlePositionVirtual(dvec &, int i) const;
-	void GetDisplacement(int i, int j, dvec &displacement) const;
-	void GetDisplacementVirtual(int i, int j, dvec &displacement) const;
-	CBox<Dim> *GetBox() const;
-	CPotential *GetPotential() const;
-	dbl  GetSphereVolume() const;
-	dbl  GetPackingFraction() const;
-	dbl  GetVolume() const;
-	int  GetParticleNumber() const;
+	void GetParticlePosition		(dvec &, int i) const;	//!<Get an individual particle's position
+	void GetParticlePositionVirtual	(dvec &, int i) const;
+	void GetDisplacement		(int i, int j, dvec &displacement) const;	//!<Get the distence between two particles
+	void GetDisplacementVirtual	(int i, int j, dvec &displacement) const;
 
-	void GetMaxDistance(dvec &dist) const;
+	CBox<Dim>*  GetBox() const;			//!<Return a pointer to the box object
+	CPotential* GetPotential() const;	//!<Return a pointer to the potential object
 
-	void PrintParticles() const;
+	dbl  GetSphereVolume() const;		//!<Get the combined volume of all the spheres
+	dbl  GetPackingFraction() const;	//!<Get the packing fraction
+	dbl  GetVolume() const;				//!<Get the volume
+	int  GetParticleNumber() const;		//!<Get the number of particles
 
-//	//Allow the class CGrid<Dim> to access private information.
-//	friend class CGrid<Dim>;
+	void GetMaxDistance(dvec &dist) const;	//!<Get the maximum distance between two particles such that they may be in contact (might be an overestimate)
+
+	void PrintParticles() const;		//!<Print info on the particles to the screen
 };
 
 
@@ -171,7 +172,7 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-
+/*
 //Functions to check that the correct dimensions, variables, and attributes are present
 //in a netCDF file.
 template <int Dim>
@@ -196,6 +197,7 @@ void CStaticState<Dim>::PopulateNetCDF(NcFile &file)
 	file.add_var("System_Positions",ncDouble,records, DOF);
 	file.add_var("System_Radii",ncDouble,records, Number);
 }
+*/
 
 //Constructors/Destructors and copy operators
 //
@@ -225,17 +227,11 @@ CStaticState<Dim>::CStaticState(int _N)
 	
 template<int Dim>
 CStaticState<Dim>::CStaticState(CStaticState<Dim> const &copy)
+	: N(0),
+	  Box(NULL),
+	  Potential(NULL)
 {
 	(*this) = copy;
-	/*
-	N = copy.GetParticleNumber();
-	
-	Box = copy.GetBox()->copy(); //????????
-	Potential = copy.GetPotential()->copy();
-	
-	Positions = copy.GetPositions();
-	Radii = copy.GetRadii();
-	*/
 }
 
 template<int Dim>	
@@ -251,19 +247,27 @@ CStaticState<Dim> &CStaticState<Dim>::operator=(CStaticState<Dim> const &copy)
 	if(this != &copy)
 	{
 		N = copy.GetParticleNumber();
+	
+		if(Box!=NULL)		delete Box;
+		if(Potential!=NULL)	delete Potential;
 		
-		Box = copy.GetBox()->clone(); //clone() gives a deep copy
-		Potential = copy.GetPotential()->clone();
+		Box			= copy.GetBox()->Clone();		//Clone() gives a deep copy
+		Potential	= copy.GetPotential()->Clone();	//Clone() gives a deep copy
 		
-		copy.GetPositionsViutual(Positions);
+		copy.GetPositionsVirtual(Positions);
 		copy.GetRadii(Radii);
-//		Positions = copy.GetPositions();
-//		Radii = copy.GetRadii();
 	}
 	return *this;
 }
 
 
+
+template <int Dim>
+void CStaticState<Dim>::SetPotential(CPotential *t_Potential)
+{
+	if(Potential!=NULL) delete Potential;
+	Potential = t_Potential->Clone();
+}
 
 template<int Dim>
 void CStaticState<Dim>::SetPotentialHarmonic(dbl epsilon)
@@ -275,7 +279,15 @@ template<int Dim>
 void CStaticState<Dim>::SetPotentialHertzian(dbl epsilon)
 {
 	if(Potential!=NULL)	delete Potential;
-	Potential = new CHarmonicHertzian(epsilon);
+	Potential = new CHertzianPotential(epsilon);
+}
+
+
+template <int Dim>
+void CStaticState<Dim>::SetBox(CBox<Dim> *t_Box)
+{
+	if(Box!=NULL)	delete Box;
+	Box = t_Box->Clone();
 }
 
 template<int Dim>
@@ -291,6 +303,11 @@ void CStaticState<Dim>::SetBoxPeriodic(int NonPeriodicDim)
 	}
 }
 
+template<int Dim>
+void CStaticState<Dim>::AssumeRectangularSymmetry()
+{
+	Box->SetSymmetry(Box->RECTANGULAR);
+}
 
 //Functions to construct systems 
 //Randomly positions particles in the system. 
@@ -358,6 +375,10 @@ void CStaticState<Dim>::SetRadiiMono()
 	Radii = VectorXd::Constant(N, sigma/2.);
 }
 
+/**
+ *	@param[in] Fracsmall The fraction of small particles
+ *	@param[in] SizeRatio The ratio of largest radii to the smallest
+ */
 template <int Dim>
 void CStaticState<Dim>::SetRadiiBi(dbl FracSmall, dbl SizeRatio)
 {
@@ -376,6 +397,9 @@ void CStaticState<Dim>::SetRadiiBi(dbl FracSmall, dbl SizeRatio)
 		Radii[i] = size2;
 }
 
+/**
+ *	@param[in] SizeRatio The ratio of largest radii to the smallest
+ */
 template <int Dim>
 void CStaticState<Dim>::SetRadiiPolyUniform(dbl SizeRatio)
 {
@@ -392,7 +416,7 @@ void CStaticState<Dim>::SetRadiiPolyUniform(dbl SizeRatio)
 
 
 
-
+/*
 //Read a system from a netcdf file.
 template <int Dim>
 void CStaticState<Dim>::Read(const NcFile &File,int Record)
@@ -467,7 +491,7 @@ void CStaticState<Dim>::Write(NcFile &File,int Record)
 	cout << "Saving potential.\n";
 	Potential->Write(File,Record);	
 }
-		
+*/	
 		
 //Functions to set properties of the system
 template <int Dim>
@@ -549,21 +573,6 @@ void CStaticState<Dim>::MoveParticlesVirtual(const Eigen::VectorXd &t_Displaceme
 		throw(CException("CStaticState<Dim>::MoveParticlesVirtual","Displacement vector has an inconsistent size.")); 
 		
 	Box->MoveParticles(Positions,t_Displacement);
-}
-
-template <int Dim>
-void CStaticState<Dim>::SetBox(CBox<Dim> *t_Box)
-{
-	Box = t_Box;
-}
-
-template <int Dim>
-void CStaticState<Dim>::SetPotential(CPotential *t_Potential)
-{
-	if(Potential) delete Potential;
-	//Potential = t_Potential;
-	assert(false);
-	Potential = t_Potential->clone();
 }
 
 template <int Dim>

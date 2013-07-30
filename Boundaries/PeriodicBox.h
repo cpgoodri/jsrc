@@ -37,6 +37,7 @@ namespace LiuJamming
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+//!Class to implement a periodic box
 template <int Dim, int NonPeriodicDim=0>
 class CPeriodicBox : public CBox<Dim>
 {	
@@ -47,26 +48,25 @@ class CPeriodicBox : public CBox<Dim>
 public:
 //constructors and copy operators
 	CPeriodicBox();
-	CPeriodicBox(const dmat Trans);
-	CPeriodicBox(dbl sx, dbl sy, dbl sz);
+	CPeriodicBox(const dmat &Trans);
 	CPeriodicBox(const CPeriodicBox &box);
 	
 	const CPeriodicBox<Dim,NonPeriodicDim> &operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box);
 
 //functions to read and write box configurations
 	static string GetName();
-	string DataToString() const;
- 	void StringToData(string Data);
- 	CBox<Dim> *Create();
+	virtual string DataToString() const;
+	virtual void StringToData(string Data);
+	virtual CPeriodicBox<Dim,NonPeriodicDim>* Clone() const;
 	
 //get a list of the periodic dimensions
 	void GetPeriodicDimensions(std::vector<int> &) const;
  	
 //functions involving the boundary
-	void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const;
-	void MoveParticle(dvecBlock Point, dvec const &Displacement) const;
-	void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
-	void MinimumDisplacement(const dvecBlock &PointA, const dvecBlock &PointB, dvec &Displacement) const;
+	virtual void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const;
+	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const;
+	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
+	virtual void MinimumDisplacement(const dvecBlock &PointA, const dvecBlock &PointB, dvec &Displacement) const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -79,34 +79,27 @@ public:
 
 //constructors and copy operators
 template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox() : CBox<Dim>()
-{
-
-}
-
-template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const dmat Trans) : CBox<Dim>(Trans)
-{
-
-
-}
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox() 
+	: CBox<Dim>()
+{}
 
 template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(dbl sx, dbl sy, dbl sz) : CBox<Dim>(sx,sy,sz)
-{
-
-}
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const dmat &Trans) 
+	: CBox<Dim>(Trans)
+{}
 
 template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const CPeriodicBox &box) : CBox<Dim>(box)
-{
-
-}
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const CPeriodicBox &box) 
+	: CBox<Dim>(box)
+{}
 
 template <int Dim, int NonPeriodicDim>	
-const CPeriodicBox<Dim,NonPeriodicDim> &CPeriodicBox<Dim,NonPeriodicDim>::operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box)
+const CPeriodicBox<Dim,NonPeriodicDim>& CPeriodicBox<Dim,NonPeriodicDim>::operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box)
 {
-	CBox<Dim>::operator=(box);
+	if(this != &box)
+	{
+		CBox<Dim>::operator=(box);
+	}
 	return *this;
 }
 
@@ -135,9 +128,9 @@ void CPeriodicBox<Dim,NonPeriodicDim>::StringToData(string Data)
 }
 
 template <int Dim, int NonPeriodicDim>
-CBox<Dim> *CPeriodicBox<Dim,NonPeriodicDim>::Create()
+CPeriodicBox<Dim,NonPeriodicDim> *CPeriodicBox<Dim,NonPeriodicDim>::Clone() const
 {
-	return new CPeriodicBox<Dim,NonPeriodicDim>();
+	return new CPeriodicBox<Dim,NonPeriodicDim>( *this );
 }
 
 

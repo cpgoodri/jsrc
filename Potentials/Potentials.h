@@ -8,6 +8,19 @@
 namespace LiuJamming
 {
 
+
+
+/*
+ *	For each potential type, create an instance using the default constructor.
+ *	Each instance then gets put in a map so that they can be referenced by name.
+ *	All future potential objects can then be created by calling the Clone() method
+ *	on one of these instances. For example
+ *
+ *		string name = CHarmonicPotential::GetName();
+ *		CPotential *pot = m[name]->Clone();
+ *
+ */
+
 static std::map<string,CPotential*> CreatePotentialMap()
 {
 	std::map<string,CPotential*> m;

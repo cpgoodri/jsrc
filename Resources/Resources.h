@@ -93,7 +93,19 @@ inline bool IsPerfectRoot(int n, int power)
 }
 
 
+inline std::string ConvertDblToHexString(dbl x)
+{
+	char cstring[256];
+	sprintf(cstring, "%a", x);
+	return std::string(cstring);
+}
 
+inline dbl ConvertHexStringToDbl(std::string s)
+{
+	dbl x;
+	sscanf(s.c_str(), "%lf", &x);
+	return x;
+}
 
 
 
