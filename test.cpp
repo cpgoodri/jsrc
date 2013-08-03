@@ -334,6 +334,7 @@ void test_fixed(int N, dbl phi, int seed, int Nfixed_particles = 0)
 
 	//DATA: N, phi, Nfixed, seed, energy, pressure, max_grad, min_passed, NPp, Nc, Nc_mm, Nc_mf, Nc_ff
 	printf("%5i %f %5i %5i % e % e % e %5i %5i %5i %5i %5i %5i\n", N, phi, Nfixed_particles, seed, Computer.Data.Energy, Computer.Data.Pressure, Computer.Data.MaxGrad, min_passed, Computer.Data.NPp, Computer.Data.Nc, Nc_mm, Nc_mf, Nc_ff);
+	fflush(stdout);
 	//
 }
 

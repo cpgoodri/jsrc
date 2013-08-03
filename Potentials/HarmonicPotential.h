@@ -125,6 +125,8 @@ string CHarmonicPotential::DataToString() const
 {
 	stringstream ss;
 	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
+//	ss << "33333333333333333333333"; //good // max of 23 characters
+
 	return ss.str();
 }
 	

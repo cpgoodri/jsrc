@@ -7,7 +7,8 @@
 #include "Computers/StaticComputer.h"
 #include "Computers/MatrixInterface.h"
 #include "Minimization/minimizer.h"
-#include <netcdf>
+#include "Database/Database.h"
+#include "Database/StaticDB.h"
 
 using namespace LiuJamming;
 #define DIM 2
@@ -17,6 +18,9 @@ using namespace netCDF::exceptions;
 
 void test1(int N, dbl phi, int seed)
 {
+
+
+
 /*
 	dbl a1=1;
 	string s = ConvertDblToHexString(a1);
@@ -41,24 +45,68 @@ void test1(int N, dbl phi, int seed)
 	cout << "str = " << str << endl;
 */
 
+
+	//db.OpenReplace();
+
 	//Create the system
 	CStaticState<DIM> s(N);
+
+
+if(false)
+{
 	s.RandomizePositions(seed);
 	s.SetRadiiPolyUniform();
 	s.SetPackingFraction(phi);
 
-	CStaticState<DIM> s2 = s;
-
+	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::replace);
+	db.WriteState(s);
 
 	CStaticComputer<DIM> c(s);
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
 	
-//	CStaticComputer<DIM> c2(s2);
-//	CSimpleMinimizer<DIM> miner2(c2, CSimpleMinimizer<DIM>::FIRE);
+	db.WriteState(s, 5);
+}else{
+	try{
+		CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::read);
+		db.ReadState(s,0);
+	}catch (NcException& e){	e.what();	}
+	
+	CStaticComputer<DIM> c(s);
+	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
+}
 
+/*	
+	NcFile file("test.nc", NcFile::replace, NcFile::classic);
+	NcDim recDim = file.addDim("rec");
+	NcVar tmpVar = file.addVar("tmp", ncDouble, recDim);
+	
+	std::vector<dbl> a;
+	for(int i=0; i<10; ++i) a.push_back(i*2.5);
+
+	std::vector<size_t> start;
+	start.push_back(0);
+	std::vector<size_t> count;
+	count.push_back(1);
+//	tmpVar.putVar(start, count, &a[0]);
+*/
+	/*
+	NcVar strVar = file.addVar("str", ncString, recDim);
+
+	string s="hello file.";
+	std::vector<size_t> start;
+	start.push_back(0);
+	std::vector<size_t> count;
+	count.push_back(1);
+	strVar.putVar(start, count, &s);
+*/
+/*
 try{
 	string fn = "test.nc";
-	NcFile outFile(fn, NcFile::replace);
+	NcFile *poutFile;
+	poutFile = new NcFile(fn, NcFile::replace);
+
+	NcFile &outFile = (*poutFile);
+//	NcFile outFile(fn, NcFile::replace);
 	NcDim recDim = outFile.addDim("rec");
 	NcVar myVar = outFile.addVar("testVar", ncDouble, recDim);
 }
@@ -67,8 +115,7 @@ catch (NcException& e)
 	cout << "unknown error"<<endl;
 	e.what();
 }
-
-
+*/
 	/*
 	//Create the system
 	CStaticState<DIM> System(N);

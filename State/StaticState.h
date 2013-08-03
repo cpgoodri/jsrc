@@ -65,6 +65,8 @@ namespace LiuJamming
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+template <int Dim> class CStaticDatabase;
+
 //!Class to store data for a sphere packing, including positions, radii, box and potential
 template <int Dim>
 class CStaticState
@@ -161,6 +163,8 @@ public:
 	void GetMaxDistance(dvec &dist) const;	//!<Get the maximum distance between two particles such that they may be in contact (might be an overestimate)
 
 	void PrintParticles() const;		//!<Print info on the particles to the screen
+
+	friend class CStaticDatabase<Dim>; 
 };
 
 

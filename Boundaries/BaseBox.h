@@ -92,6 +92,8 @@ public:
 	CBox(const CBox &box);											//!<Copy constructor
 	const CBox &operator=(const CBox &box);							//!<Copy operator
 
+
+	static CBox* SetFromStringAndMatrix(string str, dmat &trans);
 	
 //functions to read and write box configurations
 	//static string GetName() const = 0;
@@ -139,6 +141,18 @@ std::map<string,CBox<Dim>*> CBox<Dim>::BoxTypes;
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
+
+template <int Dim>
+CBox<Dim>* CBox<Dim>::SetFromStringAndMatrix(string str, dmat &trans)
+{
+	vector<string> split = SplitString(str,":");
+	CBox<Dim> *box = BoxTypes[split[0]]->Clone();
+	box->StringToData(str);
+	box->SetTransformation(trans);
+	return box;
+}
+
+
 
 /*
 //global functions to read box configurations
