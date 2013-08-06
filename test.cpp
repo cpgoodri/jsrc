@@ -239,8 +239,15 @@ void test2(int N, dbl phi, int seed)
 	System.SetPackingFraction(phi);
 	CStaticComputer<DIM> Computer2(System);
 
-	//Prepare system for standard calculations (this sets the internal BondList and removes rattlers).
-	Computer2.StdPrepareSystem();
+	//Prepare system for standard calculations
+	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
+	//it returns 0 if everything is done correctly.
+	if(Computer2.StdPrepareSystem())
+	{
+		printf("The bonds list is empty...\n");
+		return;
+	}
+
 
 	//Calculate info
 	printf("\nCalculate data for stressed system-->\n");
@@ -286,7 +293,14 @@ void test_fixed(int N, dbl phi, int seed, int Nfixed_particles = 0)
 	for(int i=0; i<N; ++i)
 		if(FixedDof[DIM*i] || FixedDof[DIM*i+1])
 			FixedParticles[i] = true;
-	Computer.StdPrepareSystem(FixedParticles); //this sets the internal BondList and removes rattlers.
+
+	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
+	//it returns 0 if everything is done correctly.
+	if(Computer.StdPrepareSystem(FixedParticles))
+	{
+		printf("The bonds list is empty...\n");
+		return;
+	}
 
 	//Calculate info
 	printf("\nCalculate data for stressed system-->\n");
@@ -357,8 +371,15 @@ void test3(int N, dbl phi, int seed)
 	CStaticComputer<DIM> Computer(System);
 	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
 
-	//Prepare system for standard calculations (this sets the internal BondList and removes rattlers).
-	Computer.StdPrepareSystem();
+	//Prepare system for standard calculations
+	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
+	//it returns 0 if everything is done correctly.
+	if(Computer.StdPrepareSystem())
+	{
+		printf("The bonds list is empty...\n");
+		return;
+	}
+
 
 	//Diagonalize H(k)
 	MatrixInterface<cdbl> Dk;
@@ -492,9 +513,9 @@ int main(int argc, char* argv[])
 
 //	test_fixed(N, phi, r, NFixedParticles);
 
-	test0(N, phi, r);
+//	test0(N, phi, r);
 //	test1(N, phi, r);
-//	test2(N, phi, r);
+	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);
 	//SamTest(N, Lp, r);

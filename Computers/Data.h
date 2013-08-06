@@ -29,6 +29,15 @@ public:
 	inline dbl Z()			const { return 2.*((dbl)Nc)/((dbl)NPp); };
 	inline dbl deltaZ()		const { return 2.*((dbl)NcmNciso())/((dbl)NPp); };
 
+	void SetZero()
+	{
+		NPp = Nc = 0;
+		Volume = Energy = Pressure = MaxGrad = 0.;
+		Stress = dmat::Zero();
+		cijkl.SetZero();
+		//Set the matrix to zero???
+	};
+
 	void Print()
 	{
 		printf("----------------------------------------------------------------\n");

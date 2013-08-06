@@ -44,8 +44,8 @@ public:
 CDatabase::CDatabase(string fn, NcFile::FileMode mode, NcFile::FileFormat format)
 	: filename(fn),
 	  Mode(mode),
-	  File(fn, mode)
-	  //File(fn, mode, format)
+	  //File(fn, mode)
+	  File(fn, mode, format)
 {};
 
 /*

@@ -102,33 +102,21 @@ public:
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 	void SetUseGrid(bool usegrid=true);
 
-	void StdPrepareSystem(bool verbose = true);
-	void StdPrepareSystem(vector<bool> const &fixed, bool verbose = true);
+
+	int  StdPrepareSystem(bool verbose = true);								//!<Compute the bonds list and remove rattlers
+	int  StdPrepareSystem(vector<bool> const &fixed, bool verbose = true);	//!<Compute the bonds list and remove rattlers, assuming some fixed particles
+
+//Calculate standard data
 	void CalculateStdData(bool CalcCijkl = true, bool CalcHess = true);
 	void CalculateStdData(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
 	void CalculateStdData_Unstressed(bool CalcCijkl=true, bool CalcHess = true);
 	void CalculateStdData_Unstressed(CStdData<Dim> &data, bool CalcCijkl=true, bool CalcHess = true);
 
+//Compute Hessian
 	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess) const;
 	void ComputeHessian(CBondList<Dim> const &bonds, Eigen::SparseMatrix<dbl> &hess) const;
 	void ComputeHessianBZ(Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
 	void ComputeHessianBZ(CBondList<Dim> const &bonds, Eigen::SparseMatrix<cdbl> &hess, Eigen::SparseMatrix<cdbl> &transformation, dvec const &k) const;
-
-/*
-//Compute the energy of the system
-    dbl ComputeEnergy();
-    
-//compute the gradient of the energy of the system.
-    void ComputeGradient(Eigen::VectorXd &tar);
-    void ComputeForce(Eigen::VectorXd &tar);
-    
-//Hessian stuff
-	void ComputeHessian(Eigen::MatrixXd &tar);
-
-//Dynamical Matrix Stuff (all done in mass-normalized coordinates)
-//computes at q = 0
-	void ComputeDynamicalMatrix(Eigen::MatrixXd &tar);
-*/
 
 //Needed for minimization routines
 	void SetFixedDof(vector<bool> const &_FixedDof);
@@ -303,18 +291,28 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 
 
 
+/**
+ *	@param[in] verbose flag to control output
+ *	@return 0 if the bonds list is prepared correctly, 1 if the bonds list is empty
+ */
 template <int Dim>
-void CStaticComputer<Dim>::StdPrepareSystem(bool verbose)
+int CStaticComputer<Dim>::StdPrepareSystem(bool verbose)
 {
 	std::vector<bool> fixed; fixed.assign(State.GetParticleNumber(),false);
-	StdPrepareSystem(fixed,verbose);
+	return StdPrepareSystem(fixed,verbose);
 }
 
+/**
+ *	@param[in] fixed vector of bools that labels particles as being fixed
+ *	@param[in] verbose flag to control output
+ *	@return 0 if the bonds list is prepared correctly, 1 if the bonds list is empty
+ */
 template <int Dim>
-void CStaticComputer<Dim>::StdPrepareSystem(vector<bool> const &fixed, bool verbose)
+int CStaticComputer<Dim>::StdPrepareSystem(vector<bool> const &fixed, bool verbose)
 {
-	ComputeBondList(Bonds);									//Use the member variable derived from CBaseComputer
+	ComputeBondList(Bonds);										//Use the member variable derived from CBaseComputer
 	Bonds.RemoveRattlers(RattlerMap, fixed, Dim+1, verbose);	//Remove rattlers
+	return (Bonds.Empty())?1:0;
 }
 
 template <int Dim>

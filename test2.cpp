@@ -52,13 +52,16 @@ void test1(int N, dbl phi, int seed)
 	CStaticState<DIM> s(N);
 
 
-if(false)
+if(true)
 {
 	s.RandomizePositions(seed);
 	s.SetRadiiPolyUniform();
 	s.SetPackingFraction(phi);
 
-	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::replace);
+	{
+		CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::replace, NcFile::nc4classic);
+	}
+	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::write, NcFile::nc4classic);
 	db.WriteState(s);
 
 	CStaticComputer<DIM> c(s);

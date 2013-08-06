@@ -58,6 +58,8 @@ public:
 
 	void GetBond(int i, BOND &b) const; //!<Copy a bond 
 
+	bool Empty() const;				//!<Returns true if the bond list is empty.
+
 	typename vector<BOND>::const_iterator begin() const;
 	typename vector<BOND>::const_iterator end() const;
 
@@ -203,6 +205,12 @@ void CBondList<Dim>::GetBond(int i, BOND &b) const
 	assert(i>=0);
 	assert(i<GetNBonds());
 	b = list[i];
+}
+
+template<int Dim>
+bool CBondList<Dim>::Empty() const
+{
+	return list.empty();
 }
 	
 template<int Dim>
@@ -378,7 +386,7 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, vector<bool> const &fixed, i
 	vector<bool> rattlers(N,false);
 	IdentifyRattlers(nbrs, rattlers, fixed, c, Verbose);
 	map.set_map(rattlers);
-	
+
 	//Remove the bonds that correspond to rattlers
 	vector<bool> BondsToRemove(list.size(),false);
 	for(int i=0; i<(int)list.size(); ++i)
@@ -390,7 +398,7 @@ void CBondList<Dim>::RemoveRattlers(index_map &map, vector<bool> const &fixed, i
 	UpdateBondIndices(map);
 
 	if(!CheckConsistency())
-		abort();
+		assert(false);
 }
 
 template<int Dim>
@@ -834,25 +842,29 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 template<int Dim>
 void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool CalcHess) const
 {
-	Data.NPp = N;
-	Data.Nc = (int)list.size();
-	Data.Volume = Volume;
-
-	Data.Energy = ComputeEnergy();
-	ComputeStressTensor(Data.Stress);
-	Data.Pressure = ComputePressure(Data.Stress);
-
-	Eigen::VectorXd grad;
-	ComputeGradient(grad);
-	Data.MaxGrad = max_abs_element(grad);
-
-	Data.cijkl.SetArtificialValues(-1e12);
-	if(CalcCijkl)
+	Data.SetZero();
+	if(!Empty())
 	{
-		CalculateCijkl(Data.cijkl, 1., 1., false);
+		Data.NPp = N;
+		Data.Nc = (int)list.size();
+		Data.Volume = Volume;
+
+		Data.Energy = ComputeEnergy();
+		ComputeStressTensor(Data.Stress);
+		Data.Pressure = ComputePressure(Data.Stress);
+
+		Eigen::VectorXd grad;
+		ComputeGradient(grad);
+		Data.MaxGrad = max_abs_element(grad);
+
+		Data.cijkl.SetArtificialValues(-1e12);
+		if(CalcCijkl)
+		{
+			CalculateCijkl(Data.cijkl, 1., 1., false);
+		}
+		if(CalcHess)
+			ComputeHessian(Data.H.A);
 	}
-	if(CalcHess)
-		ComputeHessian(Data.H.A);
 }
 
 
@@ -888,7 +900,13 @@ void CBondList<Dim>::PrintBonds_txt(char *filename) const
 template<int Dim>
 bool CBondList<Dim>::CheckConsistency() const
 {
-	if(!list.empty())
+	if(Empty())
+	{
+		if(N==0)
+			return true;
+		return false;
+	}
+	else
 	{
 		//Calculate the largest and smallest particle index
 		int imin, imax;
