@@ -119,6 +119,7 @@ public:
 
 	void SetRadiiMono();										//!<Set all diameters to 1.
 	void SetRadiiBi(dbl FracSmall = 0.5, dbl SizeRatio = 1.4);	//!<Set bidisperse size distribution, with average diameter of 1.
+	void SetRadiiBiGaussian(dbl s1, dbl s2, dbl FracSmall = 0.5, dbl SizeRatio = 1.4, long seed=123123);	//!<Set bidisperse size distribution, with average diameter of 1, where there is some polydispersity in each of the two sizes.
 	void SetRadiiPolyUniform(dbl SizeRatio = 1.4);				//!<Set uniform polydisperse size distribution, with average diameter of 1.
 	
 //Functions to read and write systems
@@ -399,6 +400,41 @@ void CStaticState<Dim>::SetRadiiBi(dbl FracSmall, dbl SizeRatio)
 		Radii[i] = size1;
 	for(int i=Nsmall; i<N; ++i)
 		Radii[i] = size2;
+}
+
+template <int Dim>
+void CStaticState<Dim>::SetRadiiBiGaussian(dbl s1, dbl s2, dbl FracSmall, dbl SizeRatio, long seed)
+{
+	const dbl sigma = 1.;
+	assert(Radii.size() == N);
+	int Nsmall = FracSmall*N;
+	dbl r1 = 1.0;
+	dbl r2 = r1*SizeRatio;
+	dbl tempr;
+
+	//Initialize the random number generator
+	RNG_taus R(seed);
+
+	//Set Nsmall from a Gaussian distribution with mean r1 and standard deviation s1
+	for(int i=0; i<Nsmall; ++i)
+	{
+		do{
+			tempr = s1*random_normal(R)+r1;
+		}while(tempr <= 0.);
+		Radii[i] = tempr;
+	}
+
+	//Set N-Nsmall from a Gaussian distribution with mean r2 and standard deviation s2
+	for(int i=Nsmall; i<N; ++i)
+	{
+		do{
+			tempr = s2*random_normal(R)+r2;
+		}while(tempr <= 0.);
+		Radii[i] = tempr;
+	}
+
+	dbl avgD = 2.*Radii.mean();
+	Radii *= sigma/avgD;
 }
 
 /**

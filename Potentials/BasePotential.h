@@ -78,12 +78,13 @@ public:
 
 //! @name Functions to compute various derivatives
 ///@{
-	virtual dbl  Compute(dbl dr,dbl r) const = 0;											//!<Compute the 0th derivative
-	virtual dbl  ComputeFirstDerivative(dbl dr,dbl r) const = 0;							//!<Compute the 1st derivative
-	virtual dbl  ComputeSecondDerivative(dbl dr, dbl r) const = 0;							//!<Compute the 2nd derivative
-	virtual dbl  ComputeThirdDerivative(dbl dr, dbl r) const = 0;							//!<Compute the 3th derivative
-	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const = 0;				//!<Compute the 0th and 1st derivatives
-	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;	//!<Compute the 0th and 1st and 2nd derivatives
+	virtual dbl  Compute(dbl dr,dbl r) const = 0;													//!<Compute the 0th derivative
+	virtual dbl  ComputeFirstDerivative(dbl dr,dbl r) const = 0;									//!<Compute the 1st derivative
+	virtual dbl  ComputeSecondDerivative(dbl dr, dbl r) const = 0;									//!<Compute the 2nd derivative
+	virtual dbl  ComputeThirdDerivative(dbl dr, dbl r) const = 0;									//!<Compute the 3th derivative
+	virtual void ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const = 0;						//!<Compute the 0th and 1st derivatives
+	virtual void ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const = 0;			//!<Compute the 0th and 1st and 2nd derivatives
+	virtual void ComputeDerivatives0123(dbl dr, dbl r, dbl &E, dbl &g, dbl &k, dbl &t) const = 0;	//!<Compute the 0th and 1st and 2nd and 3rd derivatives
 	
 ///@}
 

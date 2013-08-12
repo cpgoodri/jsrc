@@ -1,7 +1,7 @@
 #include "BasePotential.h"
 
-#ifndef HARMONIC_POTENTIAL
-#define HARMONIC_POTENTIAL
+#ifndef SOFT_POTENTIAL
+#define SOFT_POTENTIAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //Harmonic Potential class. 
@@ -9,7 +9,7 @@
 //Description
 //		This class describes particles that interact via a central force repulsion.
 //		It takes a single parameter, the interaction strength \epsilon. The string
-//		denoting this potential is "HarmonicPotential"
+//		denoting this potential is "SoftPotential"
 //
 //Global Variables
 //
@@ -39,18 +39,19 @@ using namespace std;
 
 //! Class to implement harmonic interactions.
 
-class CHarmonicPotential : public CPotential
+class CSoftPotential : public CPotential
 {	
 private:
 	dbl epsilon;	//!<the interaction strength
+	dbl alpha;		//!<the power law of the interaction
 
 public:
 //! @name Constructors and copy operators
 ///@{
-	CHarmonicPotential();
-	CHarmonicPotential(dbl _e);
-	CHarmonicPotential(const CHarmonicPotential &pot);
-	const CHarmonicPotential &operator=(const CHarmonicPotential &pot);
+	CSoftPotential();
+	CSoftPotential(dbl _e, dbl _alpha=2.);
+	CSoftPotential(const CSoftPotential &pot);
+	const CSoftPotential &operator=(const CSoftPotential &pot);
 ///@}
 
 //! @name Functions to read and write potential configurations
@@ -58,7 +59,7 @@ public:
 	static string GetName();
 	virtual string DataToString() const;
  	virtual void StringToData(string Data);
- 	virtual CHarmonicPotential *Clone() const;
+ 	virtual CSoftPotential *Clone() const;
 	
 ///@}
 	
@@ -94,107 +95,111 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 
 //constructors and copy operators
-CHarmonicPotential::CHarmonicPotential()
-	: epsilon(1.0)
+CSoftPotential::CSoftPotential()
+	: epsilon(1.0), alpha(2.0)
 {}
 
-CHarmonicPotential::CHarmonicPotential(dbl _e)
-	: epsilon(_e)
+CSoftPotential::CSoftPotential(dbl _e, dbl _alpha)
+	: epsilon(_e), alpha(_alpha)
 {}
 
-CHarmonicPotential::CHarmonicPotential(const CHarmonicPotential &pot) 
-	: epsilon(pot.epsilon)
+CSoftPotential::CSoftPotential(const CSoftPotential &pot) 
+	: epsilon(pot.epsilon), alpha(pot.alpha)
 {}
 	
-const CHarmonicPotential& CHarmonicPotential::operator=(const CHarmonicPotential &pot)
+const CSoftPotential& CSoftPotential::operator=(const CSoftPotential &pot)
 {
 	if(this != &pot)
 	{
 		epsilon = pot.epsilon;
+		alpha   = pot.alpha;
 	}
 	return *this;
 }
 
-string CHarmonicPotential::GetName()
+string CSoftPotential::GetName()
 {
-	string s = "HarmonicPotential";
+	string s = "SoftPotential";
 	return s;
 }
 
 //functions to write potential configurations
-string CHarmonicPotential::DataToString() const
+string CSoftPotential::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
-//	ss << "33333333333333333333333"; //good // max of 23 characters
-
+	ss << GetName() << ":" << ConvertDblToHexString(epsilon) << ":" << ConvertDblToHexString(alpha);
 	return ss.str();
 }
 	
 //functions to read potential configurations
-void CHarmonicPotential::StringToData(string Data)
+void CSoftPotential::StringToData(string Data)
 {
 	vector<string> split = SplitString(Data,":");
 	epsilon = ConvertHexStringToDbl(split[1]);
+	alpha   = ConvertHexStringToDbl(split[2]);
 }
 
 //Clone the potential opbject and return a pointer to the new copy.
-CHarmonicPotential* CHarmonicPotential::Clone() const
+CSoftPotential* CSoftPotential::Clone() const
 {
-	return new CHarmonicPotential( *this );
+	return new CSoftPotential( *this );
 }
 	
 //functions to compute various derivatives
-dbl CHarmonicPotential::Compute(dbl dr,dbl r) const
-{
-	return 0.5*epsilon*POW2(1-dr/r);
-}
-
-dbl CHarmonicPotential::ComputeFirstDerivative(dbl dr,dbl r) const
-{
-	return -epsilon/r*(1-dr/r);
-}
-
-dbl CHarmonicPotential::ComputeSecondDerivative(dbl dr,dbl r) const
-{
-	return epsilon/POW2(r);
-}
-
-dbl CHarmonicPotential::ComputeThirdDerivative(dbl dr,dbl r) const
-{
-	return 0.;
-}
-
-void CHarmonicPotential::ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const
+dbl CSoftPotential::Compute(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
+	return epsilon*std::pow(delta,alpha)/alpha;
 }
 
-void CHarmonicPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const
+dbl CSoftPotential::ComputeFirstDerivative(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
-	k = epsilon/POW2(r);
+	return -epsilon*std::pow(delta,alpha-1)/r;
 }
 
-void CHarmonicPotential::ComputeDerivatives0123(dbl dr, dbl r, dbl &E, dbl &g, dbl &k, dbl &t) const
+dbl CSoftPotential::ComputeSecondDerivative(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
-	k = epsilon/POW2(r);
-	t = 0.;
+	return epsilon*(alpha-1)*std::pow(delta,alpha-2)/POW2(r);
 }
 
-dbl CHarmonicPotential::ComputeSupport() const
+dbl CSoftPotential::ComputeThirdDerivative(dbl dr,dbl r) const
+{
+	dbl delta = 1-dr/r;
+	return -epsilon*(alpha-1)*(alpha-2)*std::pow(delta,alpha-3)/POW3(r);
+}
+
+void CSoftPotential::ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const
+{
+	dbl delta = 1-dr/r;
+	E = epsilon*std::pow(delta,alpha)/alpha;
+	g =-epsilon*std::pow(delta,alpha-1)/r;
+}
+
+void CSoftPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const
+{
+	dbl delta = 1-dr/r;
+	E = epsilon*std::pow(delta,alpha)/alpha;
+	g =-epsilon*std::pow(delta,alpha-1)/r;
+	k = epsilon*(alpha-1)*std::pow(delta,alpha-2)/POW2(r);
+}
+
+void CSoftPotential::ComputeDerivatives0123(dbl dr, dbl r, dbl &E, dbl &g, dbl &k, dbl &t) const
+{
+	dbl delta = 1-dr/r;
+	E = epsilon*std::pow(delta,alpha)/alpha;
+	g =-epsilon*std::pow(delta,alpha-1)/r;
+	k = epsilon*(alpha-1)*std::pow(delta,alpha-2)/POW2(r);
+	t =-epsilon*(alpha-1)*(alpha-2)*std::pow(delta,alpha-3)/POW3(r);
+}
+
+dbl CSoftPotential::ComputeSupport() const
 {
 	return 1.;
 }
 
-bool CHarmonicPotential::Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const
+bool CSoftPotential::Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const
 {
 	sigma = rad1 + rad2;
 	return (rlen2<sigma*sigma);

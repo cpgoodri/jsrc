@@ -1,7 +1,7 @@
 #include "BasePotential.h"
 
-#ifndef HARMONIC_POTENTIAL
-#define HARMONIC_POTENTIAL
+#ifndef HERTZIAN_POTENTIAL
+#define HERTZIAN_POTENTIAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //Harmonic Potential class. 
@@ -9,7 +9,7 @@
 //Description
 //		This class describes particles that interact via a central force repulsion.
 //		It takes a single parameter, the interaction strength \epsilon. The string
-//		denoting this potential is "HarmonicPotential"
+//		denoting this potential is "HertzianPotential"
 //
 //Global Variables
 //
@@ -39,7 +39,7 @@ using namespace std;
 
 //! Class to implement harmonic interactions.
 
-class CHarmonicPotential : public CPotential
+class CHertzianPotential : public CPotential
 {	
 private:
 	dbl epsilon;	//!<the interaction strength
@@ -47,10 +47,10 @@ private:
 public:
 //! @name Constructors and copy operators
 ///@{
-	CHarmonicPotential();
-	CHarmonicPotential(dbl _e);
-	CHarmonicPotential(const CHarmonicPotential &pot);
-	const CHarmonicPotential &operator=(const CHarmonicPotential &pot);
+	CHertzianPotential();
+	CHertzianPotential(dbl _e);
+	CHertzianPotential(const CHertzianPotential &pot);
+	const CHertzianPotential &operator=(const CHertzianPotential &pot);
 ///@}
 
 //! @name Functions to read and write potential configurations
@@ -58,7 +58,7 @@ public:
 	static string GetName();
 	virtual string DataToString() const;
  	virtual void StringToData(string Data);
- 	virtual CHarmonicPotential *Clone() const;
+ 	virtual CHertzianPotential *Clone() const;
 	
 ///@}
 	
@@ -94,19 +94,19 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 
 //constructors and copy operators
-CHarmonicPotential::CHarmonicPotential()
+CHertzianPotential::CHertzianPotential()
 	: epsilon(1.0)
 {}
 
-CHarmonicPotential::CHarmonicPotential(dbl _e)
+CHertzianPotential::CHertzianPotential(dbl _e)
 	: epsilon(_e)
 {}
 
-CHarmonicPotential::CHarmonicPotential(const CHarmonicPotential &pot) 
+CHertzianPotential::CHertzianPotential(const CHertzianPotential &pot) 
 	: epsilon(pot.epsilon)
 {}
 	
-const CHarmonicPotential& CHarmonicPotential::operator=(const CHarmonicPotential &pot)
+const CHertzianPotential& CHertzianPotential::operator=(const CHertzianPotential &pot)
 {
 	if(this != &pot)
 	{
@@ -115,86 +115,95 @@ const CHarmonicPotential& CHarmonicPotential::operator=(const CHarmonicPotential
 	return *this;
 }
 
-string CHarmonicPotential::GetName()
+string CHertzianPotential::GetName()
 {
-	string s = "HarmonicPotential";
+	string s = "HertzianPotential";
 	return s;
 }
 
 //functions to write potential configurations
-string CHarmonicPotential::DataToString() const
+string CHertzianPotential::DataToString() const
 {
 	stringstream ss;
 	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
-//	ss << "33333333333333333333333"; //good // max of 23 characters
-
 	return ss.str();
 }
 	
 //functions to read potential configurations
-void CHarmonicPotential::StringToData(string Data)
+void CHertzianPotential::StringToData(string Data)
 {
 	vector<string> split = SplitString(Data,":");
 	epsilon = ConvertHexStringToDbl(split[1]);
 }
 
 //Clone the potential opbject and return a pointer to the new copy.
-CHarmonicPotential* CHarmonicPotential::Clone() const
+CHertzianPotential* CHertzianPotential::Clone() const
 {
-	return new CHarmonicPotential( *this );
+	return new CHertzianPotential( *this );
 }
 	
 //functions to compute various derivatives
-dbl CHarmonicPotential::Compute(dbl dr,dbl r) const
-{
-	return 0.5*epsilon*POW2(1-dr/r);
-}
-
-dbl CHarmonicPotential::ComputeFirstDerivative(dbl dr,dbl r) const
-{
-	return -epsilon/r*(1-dr/r);
-}
-
-dbl CHarmonicPotential::ComputeSecondDerivative(dbl dr,dbl r) const
-{
-	return epsilon/POW2(r);
-}
-
-dbl CHarmonicPotential::ComputeThirdDerivative(dbl dr,dbl r) const
-{
-	return 0.;
-}
-
-void CHarmonicPotential::ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const
+dbl CHertzianPotential::Compute(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
+	dbl SQRTdelta = sqrt(delta);
+	return 0.4*epsilon*POW2(delta)*SQRTdelta;
 }
 
-void CHarmonicPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const
+dbl CHertzianPotential::ComputeFirstDerivative(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
-	k = epsilon/POW2(r);
+	dbl SQRTdelta = sqrt(delta);
+	return -epsilon*delta*SQRTdelta/r;
 }
 
-void CHarmonicPotential::ComputeDerivatives0123(dbl dr, dbl r, dbl &E, dbl &g, dbl &k, dbl &t) const
+dbl CHertzianPotential::ComputeSecondDerivative(dbl dr,dbl r) const
 {
 	dbl delta = 1-dr/r;
-	E = 0.5*epsilon*POW2(delta);
-	g = -epsilon*delta/r;
-	k = epsilon/POW2(r);
-	t = 0.;
+	dbl SQRTdelta = sqrt(delta);
+	return 1.5*epsilon*SQRTdelta/POW2(r);
 }
 
-dbl CHarmonicPotential::ComputeSupport() const
+dbl CHertzianPotential::ComputeThirdDerivative(dbl dr,dbl r) const
+{
+	dbl delta = 1-dr/r;
+	dbl SQRTdelta = sqrt(delta);
+	return -0.75*epsilon/(POW3(r)*sqrt(1-dr/r));
+}
+
+void CHertzianPotential::ComputeDerivatives01(dbl dr, dbl r, dbl &E, dbl &g) const
+{
+	dbl delta = 1-dr/r;
+	dbl SQRTdelta = sqrt(delta);
+	E = 0.4*epsilon*POW2(delta)*SQRTdelta;
+	g = -epsilon*delta*SQRTdelta/r;
+}
+
+void CHertzianPotential::ComputeDerivatives012(dbl dr, dbl r, dbl &E, dbl &g, dbl &k) const
+{
+	dbl delta = 1-dr/r;
+	dbl SQRTdelta = sqrt(delta);
+	E = 0.4*epsilon*POW2(delta)*SQRTdelta;
+	g = -epsilon*delta*SQRTdelta/r;
+	k = 1.5*epsilon*SQRTdelta/POW2(r);
+}
+
+void CHertzianPotential::ComputeDerivatives0123(dbl dr, dbl r, dbl &E, dbl &g, dbl &k, dbl &t) const
+{
+	dbl delta = 1-dr/r;
+	dbl SQRTdelta = sqrt(delta);
+	E = 0.4*epsilon*POW2(delta)*SQRTdelta;
+	g = -epsilon*delta*SQRTdelta/r;
+	k = 1.5*epsilon*SQRTdelta/POW2(r);
+	t = -0.75*epsilon/(POW3(r)*sqrt(1-dr/r));
+}
+
+dbl CHertzianPotential::ComputeSupport() const
 {
 	return 1.;
 }
 
-bool CHarmonicPotential::Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const
+bool CHertzianPotential::Overlapping(dbl rad1, dbl rad2, dbl rlen2, dbl &sigma) const
 {
 	sigma = rad1 + rad2;
 	return (rlen2<sigma*sigma);

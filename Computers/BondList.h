@@ -817,6 +817,8 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 		//Set the strain tensor
 		cijkl.set_strain_tensor(strain_tensor, ii);
 
+//Start here...
+
 		//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
 		//Also, calculate the forces on each particle due to the change in metric.
 		Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
@@ -827,6 +829,8 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 		//Add the non-affine extension of each bond to the affine extension
 		for(int bi=0; bi<(int)list.size(); ++bi)
 			DeltaR_bond.segment<Dim>(Dim*bi) += uNonAffine_node.segment<Dim>(Dim*list[bi].j) - uNonAffine_node.segment<Dim>(Dim*list[bi].i);
+
+//End here. now look for whatever...
 
 		//Calculate the change in energy
 		dbl dE = CalculateEnergyChange(DeltaR_bond, unstress_coeff, stress_coeff);

@@ -231,18 +231,22 @@ void test2(int N, dbl phi, int seed)
 	System.SetRadiiPolyUniform();
 	System.SetPackingFraction(phi);
 
+	//System.SetPotentialHertzian();
+	//System.SetPotential(new CHertzianPotential(1.));
+	System.SetPotential(new CSoftPotential(1.,2.5));
+
 	//Minimize the energy:
 	CStaticComputer<DIM> Computer(System);
 	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
 
-	System.SetBoxPeriodic(DIM);
-	System.SetPackingFraction(phi);
-	CStaticComputer<DIM> Computer2(System);
+//	System.SetBoxPeriodic(DIM);
+//	System.SetPackingFraction(phi);
+//	CStaticComputer<DIM> Computer2(System);
 
 	//Prepare system for standard calculations
 	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
 	//it returns 0 if everything is done correctly.
-	if(Computer2.StdPrepareSystem())
+	if(Computer.StdPrepareSystem())
 	{
 		printf("The bonds list is empty...\n");
 		return;
@@ -251,14 +255,14 @@ void test2(int N, dbl phi, int seed)
 
 	//Calculate info
 	printf("\nCalculate data for stressed system-->\n");
-	Computer2.CalculateStdData(); //Have option to not write down hessian.
-	Computer2.Data.Print();
-	Computer2.Data.H.VDiagonalize();
+	Computer.CalculateStdData(); //Have option to not write down hessian.
+	Computer.Data.Print();
+	Computer.Data.H.VDiagonalize();
 
 	//Calculate unstressed info
 	printf("\nCalculate data for unstressed system-->\n");
 	CStdData<DIM> unstressedData;
-	Computer2.CalculateStdData_Unstressed(unstressedData);
+	Computer.CalculateStdData_Unstressed(unstressedData);
 	unstressedData.Print();
 	unstressedData.H.VDiagonalize();
 }
