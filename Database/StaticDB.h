@@ -1,6 +1,8 @@
 #ifndef STATIC_DB_H
 #define STATIC_DB_H
 
+#ifndef DONT_USE_NETCDF
+
 #include "Database.h"
 
 
@@ -207,6 +209,9 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 
 
 }
+
+
+#endif //DONT_USE_NETCDF
 
 #endif //STATIC_DB_H
 

@@ -1,6 +1,8 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#ifndef DONT_USE_NETCDF
+
 #include "../Resources/std_include.h"
 #include "../Resources/Exception.h"
 #include "../Resources/Resources.h"
@@ -59,5 +61,9 @@ CDatabase::CDatabase(string fn, NcFile::FileMode mode)
 
 
 }
+
+#include "StaticDB.h"
+
+#endif //DONT_USE_NETCDF
 
 #endif //DATABASE_H

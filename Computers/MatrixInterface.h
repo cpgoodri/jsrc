@@ -3,13 +3,17 @@
 
 #include "../Resources/std_include.h"
 
-#include "arch.h"
-#include "arscomp.h"
-#include "arssym.h"
+#ifndef DONT_USE_ARPACK
+	#include "arch.h"
+	#include "arscomp.h"
+	#include "arssym.h"
+#endif
 
 #include <Eigen/Sparse>
-#include <Eigen/UmfPackSupport>
 
+#ifndef DONT_USE_SUITESPARSE
+	#include <Eigen/UmfPackSupport>
+#endif
 
 namespace LiuJamming
 {
@@ -20,6 +24,9 @@ template <class T> class MatrixInterface;
 
 //Functions to interface with ARPACK++
 template <class T> class ARWrapper {}; 
+
+
+#ifndef DONT_USE_ARPACK
 
 template <>
 class ARWrapper<dbl> 
@@ -43,6 +50,7 @@ public:
 const std::string ARWrapper<cdbl>::which("SM");
 const std::string ARWrapper<cdbl>::which2("LM");
 
+#endif //DONT_USE_ARPACK
 
 
 template <class T>
@@ -125,8 +133,10 @@ public:
 	bool verbose_diagonalize;
 	bool UseShiftAndInvert;
 
+#ifndef DONT_USE_SUITESPARSE
 	//Solver for UMFPACK
 	Eigen::UmfPackLU<EMatrix> UMFsolver;
+#endif
 
 	MatrixInterface()
 		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL)
@@ -241,6 +251,7 @@ public:
 template<typename T>
 void MatrixInterface<T>::Diagonalize()
 {
+#ifndef DONT_USE_ARPACK
 	ClearEigenstuff();
 
 	std::cout << "Begin Diagonalization..." << std::endl;
@@ -283,6 +294,16 @@ void MatrixInterface<T>::Diagonalize()
 
 	if(verbose_diagonalize)
 		Report();
+
+#else
+	
+	printf("ERROR: ARPACK is turned off and so I cannot diagonalize this matrix for you.\n\
+			\tComment out the line\n\
+			\t\t#define DONT_USE_ARPACK\n\
+			\tin Resources/std_include.h\n");
+	fflush(stdout);
+	assert(false);
+#endif //DONT_USE_ARPACK
 };
 
 template<typename T>
@@ -391,27 +412,45 @@ T MatrixInterface<T>::GetVec(int m, int i) const
 template<typename T>
 void MatrixInterface<T>::LUdecomp()
 {
+#ifndef DONT_USE_SUITESPARSE
 	UMFsolver.compute(A);
 	if(UMFsolver.info()!=Eigen::Success) 
 	{
 		printf("ERROR: Eigen::UmfPackLU decomposition failed\n");	
 		exit(EXIT_FAILURE);
 	}
+#else
+	printf("ERROR: Umfpack is turned off.\n"); 
+	fflush(stdout);
+	assert(false);
+#endif //DONT_USE_SUITESPARSE
 }
 
 template<typename T>
 void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector const &B)
 {
+#ifndef DONT_USE_SUITESPARSE
 	X = UMFsolver.solve(B);
+#else
+	printf("ERROR: Umfpack is turned off.\n"); 
+	fflush(stdout);
+	assert(false);
+#endif //DONT_USE_SUITESPARSE
 }
 
 template<typename T>
 void MatrixInterface<T>::solve_Mx_equals_b(T *x, T const *b)
 {
+#ifndef DONT_USE_SUITESPARSE
 	Eigen::Map<      EVector> X(&x[0], A.rows());
 	Eigen::Map<const EVector> B(&b[0], A.rows());
 	X = UMFsolver.solve(B);
 	//solve_Mx_equals_b(X,B);
+#else
+	printf("ERROR: Umfpack is turned off.\n"); 
+	fflush(stdout);
+	assert(false);
+#endif //DONT_USE_SUITESPARSE
 }
 
 

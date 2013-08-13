@@ -33,6 +33,12 @@
 
 #define DB_STRING_SIZE 128
 
+
+//#define DONT_USE_SUITESPARSE
+//#define DONT_USE_ARPACK
+//#define DONT_USE_NETCDF
+
+
 //using namespace std;
 using std::vector;
 using std::list;
@@ -40,9 +46,6 @@ using std::string;
 using std::ostream;
 using std::istream;
 
-
-//namespace LiuJamming
-//{
 
 
 typedef double dbl;

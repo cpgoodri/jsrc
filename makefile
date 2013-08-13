@@ -9,6 +9,7 @@ prjDIR = .
 prjOBJGQS = \
 $(obj)
 
+#include $(DIR)/simple_make.mk
 include $(DIR)/std_make.mk
 
 OBJGQS = \
