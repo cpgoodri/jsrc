@@ -53,6 +53,7 @@
 #include "../Boundaries/PeriodicBox.h"
 //#include "netcdfcpp.h"
 #include "../Resources/MersenneTwister.h"
+#include "../Resources/RNG_taus.h"
 
 namespace LiuJamming
 {

@@ -144,7 +144,7 @@ public:
 	};
 
 	MatrixInterface(EMatrix const &mat)
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL), 
 		  A(mat)
 	{
 	};

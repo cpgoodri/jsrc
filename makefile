@@ -32,6 +32,7 @@ $(name).out: $(OBJGQS)
 $(obj): $(StandardDependencies)
 
 
-
+clean:
+	\rm $(OBJGQS)
 
 
