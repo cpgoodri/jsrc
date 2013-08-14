@@ -378,7 +378,7 @@ template <int Dim>
 void CStaticState<Dim>::SetRadiiMono()
 {
 	const dbl sigma = 1.;
-	Radii = VectorXd::Constant(N, sigma/2.);
+	Radii = Eigen::VectorXd::Constant(N, sigma/2.);
 }
 
 /**

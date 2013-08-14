@@ -331,7 +331,7 @@ void test_fixed(int N, dbl phi, int seed, int Nfixed_particles = 0)
 
 	int Nc_mm=0, Nc_mf=0, Nc_ff=0;
 	bool ifixed, jfixed;
-	for(typename vector< CBond<DIM> >::const_iterator b=Computer.Bonds.begin(); b!=Computer.Bonds.end(); ++b)
+	for(vector< CBond<DIM> >::const_iterator b=Computer.Bonds.begin(); b!=Computer.Bonds.end(); ++b)
 	{
 		assert(b->i >= 0 && b->i < Computer.RattlerMap.size());
 		assert(b->j >= 0 && b->j < Computer.RattlerMap.size());
