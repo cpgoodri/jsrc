@@ -8,13 +8,10 @@
 #include "Computers/MatrixInterface.h"
 #include "Minimization/minimizer.h"
 #include "Database/Database.h"
-#include "Database/StaticDB.h"
 
 using namespace LiuJamming;
 #define DIM 2
 using namespace std;
-using namespace netCDF;
-using namespace netCDF::exceptions;
 
 void test1(int N, dbl phi, int seed)
 {
@@ -58,10 +55,7 @@ if(true)
 	s.SetRadiiPolyUniform();
 	s.SetPackingFraction(phi);
 
-	{
-		CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::replace, NcFile::nc4classic);
-	}
-	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::write, NcFile::nc4classic);
+	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::Replace);
 	db.WriteState(s);
 
 	CStaticComputer<DIM> c(s);
@@ -69,10 +63,8 @@ if(true)
 	
 	db.WriteState(s, 5);
 }else{
-	try{
-		CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::read);
-		db.ReadState(s,0);
-	}catch (NcException& e){	e.what();	}
+	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::ReadOnly);
+	db.ReadState(s,0);
 	
 	CStaticComputer<DIM> c(s);
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);

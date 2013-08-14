@@ -1,14 +1,14 @@
-#DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
-DIR = /home/cpgoodri/projects/test3/jsrc
+DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
+#DIR = /home/cpgoodri/projects/test3/jsrc
 
-name=test
+name=test2
 obj=$(name).o
 
 
 Walnut_NAME=walnut
-Fiji_Name=fiji
-COMPUTER_NAME=walnut
-#COMPUTER_NAME=fiji
+Fiji_NAME=fiji
+#COMPUTER_NAME=walnut
+COMPUTER_NAME=fiji
 
 
 prjDIR = .
@@ -41,10 +41,6 @@ $(obj): $(StandardDependencies)
 
 clean:
 	\rm $(OBJGQS)
-
-clean:
-	\rm $(OBJGQS)
-
 
 
 

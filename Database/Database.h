@@ -6,12 +6,11 @@
 #include "../Resources/std_include.h"
 #include "../Resources/Exception.h"
 #include "../Resources/Resources.h"
-#include "NcHelper.h"
+//#include "NcHelper.h"
+#include <netcdfcpp.h>
 
 namespace LiuJamming
 {
-using namespace netCDF;
-using namespace netCDF::exceptions;
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -24,15 +23,11 @@ using namespace netCDF::exceptions;
 class CDatabase
 {
 public:
-	enum FileMode{_read=NcFile::read, _write=NcFile::write, _replace=NcFile::replace, _newFile=NcFile::newFile};
-
 	string filename;
 	NcFile File;
 	const int Mode;
 
-	CDatabase(string fn="temp.nc", NcFile::FileMode mode=NcFile::read, NcFile::FileFormat format=NcFile::nc4);
-
-
+	CDatabase(string fn="temp.nc", NcFile::FileMode mode=NcFile::ReadOnly);
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -43,21 +38,11 @@ public:
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-CDatabase::CDatabase(string fn, NcFile::FileMode mode, NcFile::FileFormat format)
+CDatabase::CDatabase(string fn, NcFile::FileMode mode)
 	: filename(fn),
 	  Mode(mode),
-	  //File(fn, mode)
-	  File(fn, mode, format)
+	  File(fn.c_str(), mode)
 {};
-
-/*
-CDatabase::CDatabase(string fn, NcFile::FileMode mode)
-	: filename(fn)
-{
-	Open(mode);
-};
-*/
-
 
 
 }
