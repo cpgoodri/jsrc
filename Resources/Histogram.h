@@ -1,18 +1,27 @@
 #ifndef HISTOGRAM_H
 #define HISTOGRAM_H
 
-#include "Resources.h"
+#include <vector>
+#include <algorithm>
+#include <iterator>
+#include <math.h>
+#include <cmath>
+#include <assert.h>
+using std::vector;
+using std::pair;
 
-
-template <typename T=dbl, typename U=T>
+template <typename T=double, typename U=T>
 class Histogram
 {
 private:
 	vector< pair<U,U> > hist;
 	int Ndata;
 
-	vector<T> temp;
-	vector<T> const& GetD(vector<T> const &data);
+//	vector<T> temp;
+//	vector<T> const& GetD(vector<T> const &data);
+	bool CheckSort (vector<T> const &data);
+	U    mean(typename vector<T>::const_iterator first, typename vector<T>::const_iterator last);
+
 	void FixedWidth(vector<T> const &data, int Nbins, U width, U min, U max);
 public:
 	void FixedWidth(vector<T> const &data, U width);
@@ -20,19 +29,38 @@ public:
 	void FixedWidth(vector<T> const &data, int Nbins);
 	void FixedWidth(vector<T> const &data, int Nbins, U min, U max);
 
+private:
+	void VariableWidth_Private(vector<T> const &data, int Nppb);
+public:
 	void VariableWidth(vector<T> const &data, int Nppb);
-	
+
+private:
+	void MinVariableWidth_Private(vector<T> const &data, int Nppb, U minWidth);
+public:
 	void MinVariableWidth(vector<T> const &data, int Nppb, U minWidth);
 
 	//Retreive histogram:
-	int Nbins() const;
-	U x(int i) const;
-	U y(int i) const;
-	int c(int i) const;
+	inline int Nbins() const	{	return (int)hist.size();	};
+	inline U x(int i) const		{	return hist[i].first;		};
+	inline U y(int i) const		{	return hist[i].second;		};
 };
 
+
 template <typename T, typename U>
-vector<T> const& Histogram<T,U>::GetD(vector<T> const &data)
+U Histogram<T,U>::mean(typename vector<T>::const_iterator first, typename vector<T>::const_iterator last)
+{
+	U m = (U)(*first);
+	int Ndata = 1;
+	while(++first!=last)
+	{   
+		++Ndata;
+		m += ( ((U)(*first))-m )/((U)Ndata);
+	}   
+	return m;
+}
+
+template <typename T, typename U>
+bool Histogram<T,U>::CheckSort(vector<T> const &data)
 {
 	bool is_sorted = true;
 	for(typename vector<T>::const_iterator it = data.begin(); it+1 != data.end(); ++it)
@@ -41,22 +69,16 @@ vector<T> const& Histogram<T,U>::GetD(vector<T> const &data)
 			is_sorted = false;
 			break;
 		}
-	if(is_sorted)
-		return &data;
-
-	temp = data;
-	std::sort(temp.begin(), temp.end());
-	return &temp;
+	return is_sorted;
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins, U width, U min, U max)
+void Histogram<T,U>::FixedWidth(vector<T> const &data, int Nbins, U width, U min, U max)
 {
 	assert( round(((U)(max-min))/width) == Nbins );
 	hist.clear();
-	Ndata = (int)D.size();
+	Ndata = (int)data.size();
 
-	vector<T> const &D = data;//GetD(data);
 	U half_width = width/2.;
 	long count[Nbins];
 	for(int i=0; i<Nbins; ++i)
@@ -68,7 +90,7 @@ void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins, U width, U min
 
 	int bin;
 	//for(int i=0; i<(int)D.size(); ++i)
-	for(typename vector<T>::const_iterator it = D.begin(); it!=D.end(); ++it)
+	for(typename vector<T>::const_iterator it = data.begin(); it!=data.end(); ++it)
 	{
 		bin = floor( ((U)((*it)-min))/width );
 
@@ -86,7 +108,7 @@ void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins, U width, U min
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::FixedWdith(vector<T> const &data, U width)
+void Histogram<T,U>::FixedWidth(vector<T> const &data, U width)
 {
 	U min = *std::min_element(data.begin(), data.end());
 	U max = *std::max_element(data.begin(), data.end());
@@ -94,14 +116,14 @@ void Histogram<T,U>::FixedWdith(vector<T> const &data, U width)
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::FixedWdith(vector<T> const &data, U width, U min, U max)
+void Histogram<T,U>::FixedWidth(vector<T> const &data, U width, U min, U max)
 {
 	int Nbins = round((max-min)/width);
 	FixedWidth(data,Nbins,width,min,max);
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins)
+void Histogram<T,U>::FixedWidth(vector<T> const &data, int Nbins)
 {
 	U min = *std::min_element(data.begin(), data.end());
 	U max = *std::max_element(data.begin(), data.end());
@@ -109,49 +131,90 @@ void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins)
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::FixedWdith(vector<T> const &data, int Nbins, U min, U max)
+void Histogram<T,U>::FixedWidth(vector<T> const &data, int Nbins, U min, U max)
 {
-	dbl width = (max-min)/((U)Nbins);
+	U width = (max-min)/((U)Nbins);
 	FixedWidth(data,Nbins,width,min,max);
 }
 
 template <typename T, typename U>
-void Histogram<T,U>::VariableWidth(vector<T> const &data, int Nppb)
+void Histogram<T,U>::VariableWidth_Private(vector<T> const &data, int Nppb)
 {
-	vector<T> const &D = GetD(data);
+	assert(CheckSort(data));
 	hist.clear();
-	Ndata = (int)D.size();
+	Ndata = (int)data.size();
 
-	vector<T>::const_iterator it1, it2;
+	typename vector<T>::const_iterator it1, it2;
 	int Npib; //Number of points in the current bin;
 	U width, avg;
-	for(int first = 0; first < (int)D.size(); first += Nppb)
+	for(int first = 0; first < Ndata; first += Nppb)
 	{
-		Npib = std::min(Nppb,(int)D.size() - first);
+		Npib = std::min(Nppb,Ndata - first);
 		if(Npib <= 1) continue;
 
-		it1 = D.begin()+first;
+		it1 = data.begin()+first;
 		it2 = it1 + Npib;
 
 		width = (*it2) - (*it1);
 		avg = mean(it1,it2);
 		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
 	}
+}
 
-	while(last_data<num_data)
+template <typename T, typename U>
+void Histogram<T,U>::VariableWidth(vector<T> const &data, int Nppb)
+{
+	if(CheckSort(data))
+		VariableWidth_Private(data, Nppb);
+	else
 	{
-		data_in_bin.assign(data.begin()+first_data, data.begin()+last_data);
-		width = data_in_bin.back() - data_in_bin.front();
-		calc_avg(data_in_bin, avg);
-		histogram.push_back( std::make_pair(avg, num_data_in_bin/(width*num_data)) );
-
-		first_data += M;
-		last_data = first_data+M-1;
-
+		vector<T> sdata = data;
+		std::sort(sdata.begin(), sdata.end());
+		VariableWidth_Private(sdata, Nppb);
+	}
 }
 
 
+template <typename T, typename U>
+void Histogram<T,U>::MinVariableWidth_Private(vector<T> const &data, int Nppb, U minWidth)
+{
+	assert(CheckSort(data));
+	hist.clear();
+	Ndata = (int)data.size();
 
+	typename vector<T>::const_iterator it1, it2;
+	int Npib; //Number of points in the current bin;
+	U width, avg;
+	for(int first = 0; first < Ndata; )
+	{
+		Npib = std::min(Nppb,Ndata - first);
+		if(Npib <= 1) continue;
+
+		it1 = data.begin()+first;
+		it2 = std::lower_bound(it1+Npib, data.end(), (*it1)+minWidth);
+//		it2 = it1 + Npib;
+		width = (*it2) - (*it1);
+		Npib = (int)(it2-it1);
+
+		avg = mean(it1,it2);
+		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
+
+		first += Npib;
+	}
+}
+
+template <typename T, typename U>
+void Histogram<T,U>::MinVariableWidth(vector<T> const &data, int Nppb, U minWidth)
+{
+	if(CheckSort(data))
+		MinVariableWidth_Private(data, Nppb, minWidth);
+	else
+	{
+		vector<T> sdata = data;
+		std::sort(sdata.begin(), sdata.end());
+		MinVariableWidth_Private(sdata, Nppb, minWidth);
+	}
+}
 
 
 

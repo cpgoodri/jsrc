@@ -702,7 +702,7 @@ void CBondList<Dim>::ComputeEquilibriumMatrix(Eigen::SparseMatrix<dbl> &Amatrix)
 		}   
 	}
 
-	Amatrix = Eigen::SparseMatrix(Dim*N,(int)list.size());
+	Amatrix = Eigen::SparseMatrix<dbl>(Dim*N,(int)list.size());
 	Amatrix.setFromTriplets(coefficients.begin(), coefficients.end());
 	assert(Amatrix.isCompressed());
 }

@@ -24,8 +24,8 @@ static std::map< string, CBox<Dim>* > CreateBoxMap()
 
 }
 
-std::map<string,CBox<2>*> CBox<2>::BoxTypes = CreateBoxMap<2>();
-std::map<string,CBox<3>*> CBox<3>::BoxTypes = CreateBoxMap<3>();
+template<> std::map<string,CBox<2>*> CBox<2>::BoxTypes = CreateBoxMap<2>();
+template<> std::map<string,CBox<3>*> CBox<3>::BoxTypes = CreateBoxMap<3>();
 
 
 
