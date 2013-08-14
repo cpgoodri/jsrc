@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <assert.h>
+#include <stdio.h>
 using namespace std;
 /**********************************************************************************************
  *		class:			index_map

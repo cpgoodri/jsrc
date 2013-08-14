@@ -134,12 +134,12 @@ public:
 		
 
 template<int Dim>
-CBondList<Dim>::CBondList<Dim>(int _N, dbl V)
+CBondList<Dim>::CBondList(int _N, dbl V)
 	:N(_N), Volume(V) 
 {};
 
 template<int Dim>
-CBondList<Dim>::CBondList<Dim>(const CBondList &src) 
+CBondList<Dim>::CBondList(const CBondList &src) 
 {
 	(*this) = src; 
 }

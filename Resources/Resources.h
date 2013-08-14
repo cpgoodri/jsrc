@@ -252,8 +252,8 @@ T abs(T a)
 
 
 //code to calculate the volume and surface area of an n-dimensional unit sphere
-dbl nSphere_Sn(int n);
-dbl nSphere_Vn(int n)
+static dbl nSphere_Sn(int n);
+static dbl nSphere_Vn(int n)
 {
 	if(n==0) return 1.;
 	return nSphere_Sn(n-1)/((dbl)n);

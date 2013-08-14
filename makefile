@@ -1,20 +1,27 @@
-DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
+#DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
+DIR = /home/cpgoodri/projects/test3/jsrc
 
 name=test
 obj=$(name).o
 
+
+Walnut_NAME=walnut
+Fiji_Name=fiji
+COMPUTER_NAME=walnut
+#COMPUTER_NAME=fiji
 
 
 prjDIR = .
 prjOBJGQS = \
 $(obj)
 
-#include $(DIR)/simple_make.mk
-include $(DIR)/std_make.mk
+#include $(DIR)/MAKE/simple_make.mk
+include $(DIR)/MAKE/std_make.mk
 
 OBJGQS = \
 $(patsubst %,$(srcDIR)/%,$(srcOBJGQS)) \
 $(patsubst %,$(prjDIR)/%,$(prjOBJGQS))
+
 
 
 
@@ -31,6 +38,11 @@ $(name).out: $(OBJGQS)
 #if any header file is changed, the project file gets recompiled.
 $(obj): $(StandardDependencies)
 
+
+
+
+clean:
+	\rm $(OBJGQS)
 
 
 
