@@ -41,7 +41,9 @@
 #include "../Resources/std_include.h"
 #include "../Resources/Exception.h"
 #include "../Resources/Resources.h"
-//#include "netcdfcpp.h"
+#ifndef DONT_USE_NETCDF
+	#include "netcdfcpp.h"
+#endif
 
 namespace LiuJamming
 {
@@ -62,17 +64,29 @@ class CPotential
 private:
 	static std::map<string,CPotential*> PotentialTypes; //!<Global map to reference potentials by name
 
+protected:
+	static const int STRING_SIZE = 128;
+	static const char STRING_DELIMITER = ':';
+
 public:
 //! @name Global functions to read and write
 ///@{
-	static CPotential* SetFromString(string str);	//!<From an input string, return a pointer to a newly created potential object with the given parameter values
+	static CPotential*	SetFromString(string str);	//!<From an input string, return a pointer to a newly created potential object with the given parameter values
+	static string		FillString(stringstream &ss);
+#ifndef DONT_USE_NETCDF
+	static bool		CheckNetCDF(const NcFile &file);
+	static void		PopulateNetCDF(NcFile &file);
+	static void		PrepareNetCDF(NcFile &file, bool CheckOnly);
+	void			NetCDFWrite(NcFile &file, int record);
+	CPotential*		NetCDFRead(NcFile &file, int record);
+#endif
 ///@}
 
 //! @name Functions for setting, copying and saving
 ///@{
-	virtual string DataToString() const = 0;		//!<Return a string that contains the data necessary for the potential object (e.g. interaction strength, etc.)
- 	virtual void StringToData(string Data) = 0;		//!<From an input string, set the data variables.
- 	virtual CPotential* Clone() const = 0;			//!<Return a pointer to a newly created clone of the object.
+	virtual string		DataToString() const = 0;			//!<Return a string that contains the data necessary for the potential object (e.g. interaction strength, etc.)
+ 	virtual void		StringToData(string Data) = 0;		//!<From an input string, set the data variables.
+ 	virtual CPotential* Clone() const = 0;					//!<Return a pointer to a newly created clone of the object.
 
 ///@}
 
@@ -109,11 +123,99 @@ public:
 
 CPotential* CPotential::SetFromString(string str)
 {
-	vector<string> split = SplitString(str,":");
+	vector<string> split = SplitString(str,STRING_DELIMITER);
 	CPotential *pot = PotentialTypes[split[0]]->Clone();
 	pot->StringToData(str);
 	return pot;
 }
+
+string CPotential::FillString(stringstream &ss)
+{
+	string s = ss.str();
+	s.append(STRING_SIZE-s.size(), STRING_DELIMITER);
+	assert(s.size()==STRING_SIZE);
+	return s;
+}
+
+#ifndef DONT_USE_NETCDF
+bool CPotential::CheckNetCDF(const NcFile &file)
+{
+	NcError err(NcError::verbose_nonfatal);
+	if(!file.is_valid())	throw(CException("CPotential::CheckNetCDF","NetCDF file is not valid."));
+
+	NcAtt *a = file.get_att("Potential_Populated");
+	bool populated = (a==0)?false:true;  //If file.get_att() returns 0 if attribute does not exist.
+	delete a;	//attributes need to be deleted by the user to avoid memory leaks.
+	return populated;
+}
+
+void CPotential::PopulateNetCDF(NcFile &file)
+{
+	NcError err(NcError::verbose_nonfatal);
+	file.add_att("Potential_Populated", 1);
+
+	//Load the record dimension
+	NcDim *recDim = file.get_dim("rec");
+	if(!recDim->is_valid())	throw(CException("CPotential::PopulateNetCDF","Record dimension is not valid."));
+
+	//Load or create the string size dimension
+	NcDim *PotStrSizeDim = file.get_dim("PotStrSize");
+	if(PotStrSizeDim==NULL)			PotStrSizeDim = file.add_dim("PotStrSize",STRING_SIZE);
+	if(!PotStrSizeDim->is_valid())	throw(CException("CPotential::PopulateNetCDF","PotStrSize dimension is not valid."));
+
+	//Create the variable
+	file.add_var("PotString",ncChar,recDim,PotStrSizeDim);
+}
+
+void CPotential::PrepareNetCDF(NcFile &file, bool CheckOnly)
+{
+	NcError err(NcError::verbose_nonfatal);
+	if(!file.is_valid())	throw(CException("CPotential::CheckNetCDF","NetCDF file is not valid."));
+
+	//Attempt to load the dimensions and variables
+	NcDim *recDim = file.get_dim("rec");
+	NcDim *PotStrSizeDim = file.get_dim("PotStrSize");
+	NcVar *PotStringVar = file.get_var("PotString");
+
+	//Check the record dimension
+	if(!recDim->is_valid())	throw(CException("CPotential::PopulateNetCDF","Record dimension is not valid."));
+
+	//Create and check the string size dimension
+	if(PotStrSizeDim==NULL && !CheckOnly)	PotStrSizeDim = file.add_dim("PotStrSize",STRING_SIZE);
+	if(!PotStrSizeDim->is_valid())			throw(CException("CPotential::PrepareNetCDF","PotStrSize dimension is not valid."));
+	if(PotStrSizeDim->size()!=STRING_SIZE)	throw(CException("CPotential::PrepareNetCDF","PotStrSize dimension has wrong size."));
+	
+	//Create and check the variable
+	if(PotStringVar==NULL && !CheckOnly)	PotStringVar = file.add_var("PotString",ncChar,recDim,PotStrSizeDim);
+	if(!PotStringVar->is_valid())			throw(CException("CPotential::PrepareNetCDF","PotString variable is not valid."));
+}
+
+void CPotential::NetCDFWrite(NcFile &file, int record)
+{
+//	if(!CheckNetCDF(file))		//Check if necessary dimensions and variables exist
+//		PopulateNetCDF(file);	//Create necessary dimensions and variables
+
+	PrepareNetCDF(file,false);
+	NcVar *PotStringVar= file.get_var("PotString");
+	PotStringVar->put_rec(DataToString().c_str(),   record);
+}
+
+CPotential* CPotential::NetCDFRead(NcFile &file, int record)
+{
+	//Perform checks
+//	if(!CheckNetCDF(file))							throw(CException("CPotential::NetCDFRead","Attempting to read a potential from a file that has no appropriate data."));
+
+	PrepareNetCDF(file,true);
+	if(record>=file.get_dim("Records")->size())		throw(CException("CPotential::NetCDFRead","Attempting to read a potential from a record that does not exist."));
+	
+	char c_str[STRING_SIZE];
+	NcVar *PotStringVar= file.get_var("PotString");
+	PotStringVar -> set_cur(record);
+	PotStringVar -> get(&c_str[0], 1, STRING_SIZE);
+	string str = c_str;
+	return SetFromString(str);
+}
+#endif 
 
 
 }

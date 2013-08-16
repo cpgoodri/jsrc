@@ -211,6 +211,9 @@ void CStaticComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList_Grid(CBondList<Dim> &bonds)
 {
+	//Make sure bonds is empty.
+	bonds.RemoveAllBonds();
+
 	Grid.Construct();
 	//Grid.PrintGrid();
 
@@ -231,18 +234,6 @@ void CStaticComputer<Dim>::ComputeBondList_Grid(CBondList<Dim> &bonds)
 					State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
 					bonds.AddBond( CBond<Dim>(i, (*it), rlen, E, g, k, Displacement) );
 				}
-				/*
-				State.GetDisplacement(i,(*it),Displacement);
-				sigma = State.GetRadius(i) + State.GetRadius((*it));
-				rlen2 = Displacement.squaredNorm();
-				if(rlen2 < sigma*sigma)
-				{
-					rlen = sqrt(rlen2);
-					State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
-					bonds.AddBond( CBond<Dim>(i, (*it), rlen, E, g, k, Displacement) );
-					//bonds.AddBond( CBond<Dim>(i, (*it), sigma, rlen, E, g, k, Displacement) );
-				}
-				*/
 			}
 		}
 	}
@@ -252,6 +243,9 @@ void CStaticComputer<Dim>::ComputeBondList_Grid(CBondList<Dim> &bonds)
 template <int Dim>
 void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 {
+	//Make sure bonds is empty.
+	bonds.RemoveAllBonds();
+
 	dvec Displacement;
 	bonds.SetN(State.GetParticleNumber());
 	dbl sigma, rlen, rlen2, E, g, k;
@@ -266,20 +260,7 @@ void CStaticComputer<Dim>::ComputeBondList_NoGrid(CBondList<Dim> &bonds) const
 				State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
 				bonds.AddBond( CBond<Dim>(i, j, rlen, E, g, k, Displacement) );
 			}
-			/*
-			State.GetDisplacement(i,j,Displacement);
-			sigma = State.GetRadius(i) + State.GetRadius(j);
-			rlen2 = Displacement.squaredNorm();
-			if(rlen2 < sigma*sigma)
-			{
-				rlen = sqrt(rlen2);
-				State.GetPotential()->ComputeDerivatives012(rlen, sigma, E, g, k);
-				bonds.AddBond( CBond<Dim>(i, j, rlen, E, g, k, Displacement) );
-				//bonds.AddBond( CBond<Dim>(i, j, sigma, rlen, E, g, k, Displacement) );
-			}
-			*/
 		}
-	//bonds.Volume = 0.;
 	bonds.SetVolume(GetVolume());
 }
 

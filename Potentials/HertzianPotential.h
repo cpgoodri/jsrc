@@ -125,8 +125,10 @@ string CHertzianPotential::GetName()
 string CHertzianPotential::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
-	return ss.str();
+	ss << GetName() << STRING_DELIMITER << ConvertDblToHexString(epsilon);
+	return FillString(ss);
+//	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
+//	return ss.str();
 }
 	
 //functions to read potential configurations

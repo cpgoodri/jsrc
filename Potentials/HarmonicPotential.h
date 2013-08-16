@@ -125,10 +125,10 @@ string CHarmonicPotential::GetName()
 string CHarmonicPotential::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
-//	ss << "33333333333333333333333"; //good // max of 23 characters
-
-	return ss.str();
+	ss << GetName() << STRING_DELIMITER << ConvertDblToHexString(epsilon);
+	return FillString(ss);
+//	ss << GetName() << ":" << ConvertDblToHexString(epsilon);
+//	return ss.str();
 }
 	
 //functions to read potential configurations

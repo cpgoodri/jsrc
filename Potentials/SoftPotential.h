@@ -127,8 +127,10 @@ string CSoftPotential::GetName()
 string CSoftPotential::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << ConvertDblToHexString(epsilon) << ":" << ConvertDblToHexString(alpha);
-	return ss.str();
+	ss << GetName() << STRING_DELIMITER << ConvertDblToHexString(epsilon) << STRING_DELIMITER << ConvertDblToHexString(alpha);
+	return FillString(ss);
+//	ss << GetName() << ":" << ConvertDblToHexString(epsilon) << ":" << ConvertDblToHexString(alpha);
+//	return ss.str();
 }
 	
 //functions to read potential configurations

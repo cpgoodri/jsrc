@@ -51,6 +51,7 @@ public:
 	void AddBond(const BOND &b);	//!<Add a bond to the list
 	void SetVolume(dbl _V);			//!<Set the volume.
 	void SetN(int _N);				//!<Set the number of nodes.
+	void RemoveAllBonds();			//!<Delete all the bonds and set N and Volume to zero.
 
 	int GetN() const;				//!<Get the number of nodes.
 	int GetNBonds() const;			//!<Get the number of bonds.
@@ -185,6 +186,14 @@ template<int Dim>
 int CBondList<Dim>::GetN() const
 {
 	return N;
+}
+
+template<int Dim>
+void CBondList<Dim>::RemoveAllBonds()
+{
+	list.clear();
+	N=0;
+	Volume=0;
 }
 
 template<int Dim>
