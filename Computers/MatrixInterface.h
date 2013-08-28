@@ -136,15 +136,16 @@ public:
 #ifndef DONT_USE_SUITESPARSE
 	//Solver for UMFPACK
 	Eigen::UmfPackLU<EMatrix> UMFsolver;
+	bool LUdecomposed;
 #endif
 
 	MatrixInterface()
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL)
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL), LUdecomposed(false)
 	{
 	};
 
 	MatrixInterface(EMatrix const &mat)
-		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL), 
+		: num_request(0),num_converged(0),compute_vecs(1),verbose_diagonalize(0), UseShiftAndInvert(0), Eigenvalues(NULL), Eigenvectors(NULL), LUdecomposed(false)
 		  A(mat)
 	{
 	};
@@ -419,6 +420,7 @@ void MatrixInterface<T>::LUdecomp()
 		printf("ERROR: Eigen::UmfPackLU decomposition failed\n");	
 		exit(EXIT_FAILURE);
 	}
+	LUdecomposed = true;
 #else
 	printf("ERROR: Umfpack is turned off.\n"); 
 	fflush(stdout);
@@ -430,6 +432,7 @@ template<typename T>
 void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector const &B)
 {
 #ifndef DONT_USE_SUITESPARSE
+	if(!LUdecomposed) LUdecomp();
 	X = UMFsolver.solve(B);
 #else
 	printf("ERROR: Umfpack is turned off.\n"); 
@@ -444,6 +447,7 @@ void MatrixInterface<T>::solve_Mx_equals_b(T *x, T const *b)
 #ifndef DONT_USE_SUITESPARSE
 	Eigen::Map<      EVector> X(&x[0], A.rows());
 	Eigen::Map<const EVector> B(&b[0], A.rows());
+	if(!LUdecomposed) LUdecomp();
 	X = UMFsolver.solve(B);
 	//solve_Mx_equals_b(X,B);
 #else

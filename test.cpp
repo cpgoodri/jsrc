@@ -7,6 +7,9 @@
 #include "Computers/StaticComputer.h"
 #include "Computers/MatrixInterface.h"
 #include "Minimization/minimizer.h"
+
+
+#include <Eigen/Eigenvalues>
 using namespace std;
 using namespace LiuJamming;
 #define DIM 2
@@ -252,19 +255,28 @@ void test2(int N, dbl phi, int seed)
 		return;
 	}
 
-
 	//Calculate info
 	printf("\nCalculate data for stressed system-->\n");
 	Computer.CalculateStdData(); //Have option to not write down hessian.
 	Computer.Data.Print();
-	Computer.Data.H.VDiagonalize();
+	//Computer.Data.H.VDiagonalize();
 
+	typedef Eigen::Matrix<dbl,DIM,DIM> dmat;
+	dmat fab;
+	Computer.Bonds.ComputeFabricTensor(fab);
+	cout << "Fabric Tensor\n" << fab << endl;
+
+	cout << "eigenvalues:\n" << fab.eigenvalues() << endl;
+	cout << "Trace  = " << fab.trace() << endl;
+
+	/*
 	//Calculate unstressed info
 	printf("\nCalculate data for unstressed system-->\n");
 	CStdData<DIM> unstressedData;
 	Computer.CalculateStdData_Unstressed(unstressedData);
 	unstressedData.Print();
 	unstressedData.H.VDiagonalize();
+	*/
 }
 
 

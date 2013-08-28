@@ -1,7 +1,7 @@
 DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
 #DIR = /home/cpgoodri/projects/test3/jsrc
 
-name=test2
+name=test
 obj=$(name).o
 
 

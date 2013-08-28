@@ -18,7 +18,8 @@ public:
 
 	dbl Energy;
 	dbl Pressure;
-	dmat Stress;
+	dmat Stress;	//!<The stress tensor
+	dmat Fabric;	//!<The fabric tensor
 	dbl MaxGrad;
 
 	cCIJKL<Dim> cijkl;
@@ -34,6 +35,7 @@ public:
 		NPp = Nc = 0;
 		Volume = Energy = Pressure = MaxGrad = 0.;
 		Stress = dmat::Zero();
+		Fabric = dmat::Zero();
 		cijkl.SetZero();
 		//Set the matrix to zero???
 	};
@@ -44,6 +46,7 @@ public:
 		printf("Printing standard data:\n");
 		printf("\tNPp         = %i\n", NPp);
 		printf("\tNc          = %i\n", Nc);
+		printf("\tZ           = %f\n", Z());
 		printf("\tNcmNciso    = %i\n", NcmNciso());
 		printf("\tDelta Z     = % e\n", deltaZ());
 		printf("\tEnergy      = % e\n", Energy);
@@ -54,6 +57,13 @@ public:
 		{
 			printf("\t             ");
 			for(int d2=0; d2<Dim; ++d2) printf(" % e  ", Stress(d1,d2));
+			printf("\n");
+		}
+		printf("\tFabric Tensor: \n");
+		for(int d1=0; d1<Dim; ++d1)
+		{
+			printf("\t             ");
+			for(int d2=0; d2<Dim; ++d2) printf(" % e  ", Fabric(d1,d2));
 			printf("\n");
 		}
 		printf("\tElastic Constants: \n");

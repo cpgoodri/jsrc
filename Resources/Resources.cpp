@@ -120,6 +120,12 @@ double NormalCDFInverse(double p)
     }
 }
 
+vector<string> SplitString(const string &target, char ctoken)
+{
+	string token(&ctoken);
+	return SplitString(target, token);
+}
+
 vector<string> SplitString(const string &target, const string &token)
 {
 	vector<string> split;

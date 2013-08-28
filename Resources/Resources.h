@@ -280,6 +280,7 @@ dbl RationalApproximation(dbl t);
 
 dbl NormalCDFInverse(dbl p);
 
+vector<string> SplitString(const string &target, char ctoken);
 vector<string> SplitString(const string &target, const string &token);
 
 #endif

@@ -91,6 +91,7 @@ public:
 	dbl  ComputePressure() const;						//!<Compute the pressure.
 	dbl  ComputePressure(dmat &stress) const;			//!<Compute the pressure.
 	void ComputeStressTensor(dmat &stress) const;		//!<Compute the Dim by Dim stress tensor.
+	void ComputeFabricTensor(dmat &fabric) const;		//!<Compute the Dim by Dim fabric tensor.
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const;	//!<Compute the Dim*N dimensional energy gradient (i.e. -Fnet), and return the energy.
 	dbl  ComputeGradient(Eigen::VectorXd &grad, vector<bool> const &FixedDOF) const;
 
@@ -105,6 +106,7 @@ public:
 	//void ComputeEquilibriumMatrix_BZ(Eigen::SparseMatrix<dbl> &Amatrix, dvec k) const;
 
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
+	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 
 	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
@@ -509,6 +511,20 @@ void CBondList<Dim>::ComputeStressTensor(dmat &stress) const
 	stress /= Volume;
 }
 
+/**
+ *	For a definition of the fabric tensor, see the "Methods Summary" on page 3 of Bi et al. Nature (2011).
+ *	The average contact number is given by the trace, while the differences in the eigenvalues measure the contact anisotropy.
+ *	There is an extra factor of 2 here so that Z = fabric.trace(). This is not the case for the definition given in Bi et al. 
+ */
+template<int Dim>
+void CBondList<Dim>::ComputeFabricTensor(dmat &fabric) const
+{
+	fabric.setZero();
+	for(typename vector<BOND>::const_iterator b=list.begin(); b!=list.end(); ++b)
+		fabric += ((b->r)*(b->r.transpose()))/POW2(b->rlen);
+	fabric *= 2./((dbl)N);
+}
+
 
 template<int Dim>
 dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
@@ -826,8 +842,6 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 		//Set the strain tensor
 		cijkl.set_strain_tensor(strain_tensor, ii);
 
-//Start here...
-
 		//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
 		//Also, calculate the forces on each particle due to the change in metric.
 		Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
@@ -838,8 +852,6 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 		//Add the non-affine extension of each bond to the affine extension
 		for(int bi=0; bi<(int)list.size(); ++bi)
 			DeltaR_bond.segment<Dim>(Dim*bi) += uNonAffine_node.segment<Dim>(Dim*list[bi].j) - uNonAffine_node.segment<Dim>(Dim*list[bi].i);
-
-//End here. now look for whatever...
 
 		//Calculate the change in energy
 		dbl dE = CalculateEnergyChange(DeltaR_bond, unstress_coeff, stress_coeff);
@@ -853,6 +865,26 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 }
 
 template<int Dim>
+void CBondList<Dim>::CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
+{
+	MatrixInterface<dbl> D1;
+	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
+	D1.LUdecomp();
+
+	n_d2Udvdgamma = Eigen::VectorXd::Zero(Nvar);
+	uNonAffine_node = Eigen::VectorXd::Zero(Nvar);
+	DeltaR_bond = Eigen::VectorXd::Zero(Dim*(int)list.size());
+
+	//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
+	//Also, calculate the forces on each particle due to the change in metric.
+	Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
+	
+	//Solve for the non-affine displacement
+	D1.solve_Mx_equals_b(uNonAffine_node, n_d2Udvdgamma);
+}
+
+
+template<int Dim>
 void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool CalcHess) const
 {
 	Data.SetZero();
@@ -864,6 +896,7 @@ void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool 
 
 		Data.Energy = ComputeEnergy();
 		ComputeStressTensor(Data.Stress);
+		ComputeFabricTensor(Data.Fabric);
 		Data.Pressure = ComputePressure(Data.Stress);
 
 		Eigen::VectorXd grad;
