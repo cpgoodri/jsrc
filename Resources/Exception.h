@@ -26,6 +26,7 @@
 
 #include <ostream>
 #include <string>
+#include <iostream>
 
 namespace LiuJamming
 {

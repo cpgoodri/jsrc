@@ -7,12 +7,13 @@
 #include "Computers/StaticComputer.h"
 #include "Computers/MatrixInterface.h"
 #include "Minimization/minimizer.h"
+#include "Resources/OrderParams.h"
 
 
 #include <Eigen/Eigenvalues>
 using namespace std;
 using namespace LiuJamming;
-#define DIM 2
+#define DIM 3
 
 
 
@@ -131,8 +132,8 @@ void test_orderparam(int N, dbl phi, int seed)
 {
 	//Create the system
 	CStaticState<DIM> System(N);
-//	System.RandomizePositions(seed);
 	System.RandomizePositions(seed);
+//	System.SetFCCLattice();
 	System.SetRadiiMono();
 	System.SetPackingFraction(phi);
 
@@ -140,7 +141,30 @@ void test_orderparam(int N, dbl phi, int seed)
 	System.AssumeRectangularSymmetry(); //This gives a slight performance boost.
 	CStaticComputer<DIM> Computer(System);
 	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
+	
+	//Prepare system for standard calculations
+	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
+	//it returns 0 if everything is done correctly.
+	if(Computer.StdPrepareSystem())
+	{
+		printf("The bonds list is empty...\n");
+		return;
+	}
+
+	//Calculate info
+	printf("\nCalculate data for stressed system-->\n");
+	Computer.CalculateStdData(); //Have option to not write down hessian.
+	Computer.Data.Print();
+
+	LocalOrder<DIM> lo(Computer.Bonds);
+	lo.Calculate();
+
+	cout << lo.fi << endl;
+
+
 }
+
+#if false
 
 void test0(int N, dbl phi, int seed)
 {
@@ -506,7 +530,7 @@ void test4(int seed)
 
 
 
-
+#endif //false
 
 
 int main(int argc, char* argv[])
@@ -544,9 +568,11 @@ int main(int argc, char* argv[])
 
 //	test_fixed(N, phi, r, NFixedParticles);
 
+	test_orderparam(N, phi, r);
+
 //	test0(N, phi, r);
 //	test1(N, phi, r);
-	test2(N, phi, r);
+//	test2(N, phi, r);
 //	test3(N, phi, r);
 //	test4(r);
 	//SamTest(N, Lp, r);

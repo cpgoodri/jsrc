@@ -58,7 +58,7 @@ public:
 	dbl GetVolume() const;			//!<Get the volume.
 
 	void GetBond(int i, BOND &b) const; //!<Copy a bond 
-	BOND& operator[](int i) const;
+	const BOND& operator[](int i) const;
 
 	bool Empty() const;				//!<Returns true if the bond list is empty.
 
@@ -219,7 +219,7 @@ void CBondList<Dim>::GetBond(int i, BOND &b) const
 	b = list[i];
 }
 template<int Dim>
-BOND& CBondList<Dim>::operator[](int i) const
+const CBond<Dim>& CBondList<Dim>::operator[](int i) const
 {
 	return list[i];
 }

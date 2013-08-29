@@ -375,12 +375,15 @@ void CStaticState<Dim>::SetSquareLattice(int Lx, int Ly)
 		}
 }
 
-template <>
-void CStaticState<3>::SetFCCLattice()
+
+template <int Dim>
+void CStaticState<Dim>::SetFCCLattice()
 {
+	if(Dim!=3)	throw(CException("CStaticState<Dim>::SetFCCLattice","Can only set FCC lattice in 3d."));
+
 	const int NP_per_cell = 4;
-	const int Ncells = NP/NP_per_cell;
-	if( NP%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetFCCLattice","NP must be divisible by 4."));
+	const int Ncells = N/NP_per_cell;
+	if( N%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetFCCLattice","N must be divisible by 4."));
 
 	//Calcuate the number of cells in each direction
 	//right now this is only set up for Ncellx = Ncelly = Ncellz
@@ -392,14 +395,16 @@ void CStaticState<3>::SetFCCLattice()
 }
 
 
-template <>
-void CStaticState<3>::SetFCCLattice(int Lx, int Ly, int Lz)
+template <int Dim>
+void CStaticState<Dim>::SetFCCLattice(int Lx, int Ly, int Lz)
 {
+	if(Dim!=3)	throw(CException("CStaticState<Dim>::SetFCCLattice","Can only set FCC lattice in 3d."));
+
 	const int NP_per_cell = 4;
 	const int Ncells = Lx*Ly*Lz;
 	Eigen::Vector3i Ncellxyz;
 	Ncellxyz << Lx, Ly, Lz;
-	if( NP_per_cell*Ncells != NP) throw(CException("CStaticState<3>::SetFCCLattice","Incorrect number of particles for creating an FCC lattice."));
+	if( NP_per_cell*Ncells != N) throw(CException("CStaticState<3>::SetFCCLattice","Incorrect number of particles for creating an FCC lattice."));
 	
 	//Calculate the lattice vectors. The unit cell will be a (rectangular) cube with edge lengths (a[0], a[1], a[2]).
 	dvec a;
@@ -424,51 +429,55 @@ void CStaticState<3>::SetFCCLattice(int Lx, int Ly, int Lz)
 	//	This is not very efficient, but who cares.
 	Eigen::Vector3i cxyz;
 	int p, dd, cell;
-	for(int i=0; i<NP; ++i)
+	for(int i=0; i<N; ++i)
 	{
 		p = i%NP_per_cell;
 		cell = i/NP_per_cell;
 		cxyz[0] = cell%Ncellxyz[0];
 		cxyz[1] = (cell%(Ncellxyz[0]*Ncellxyz[1]))/Ncellxyz[0];
 		cxyz[2] = cell/(Ncellxyz[0]*Ncellxyz[1]);
-		for(dd=0; dd<DIM; ++dd)
+		for(dd=0; dd<Dim; ++dd)
 		{
 			Positions(Dim*i+dd) = a[dd]*cxyz[dd] + rel_pos[p][dd];
 		}
 	}
 }
 
-template <>
-void CStaticState<3>::SetBCCLattice()
+template <int Dim>
+void CStaticState<Dim>::SetBCCLattice()
 {
+	if(Dim!=3)	throw(CException("CStaticState<Dim>::SetBCCLattice","Can only set BCC lattice in 3d."));
+
 	const int NP_per_cell = 2;
-	const int Ncells = NP/NP_per_cell;
-	if( NP%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetBCCLattice","NP must be divisible by 2."));
+	const int Ncells = N/NP_per_cell;
+	if( N%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetBCCLattice","N must be divisible by 2."));
 
 	//Calcuate the number of cells in each direction
 	//right now this is only set up for Ncellx = Ncelly = Ncellz
 	int Lx;
-	bool correct_Ncells = is_perfect_root(Ncells, DIM, Lx); //This returns Lx
+	bool correct_Ncells = IsPerfectRoot(Ncells, Dim, Lx); //This returns Lx
 	if( !correct_Ncells ) throw(CException("CStaticState<3>::SetBCCLattice","The number of BCC cells must be a perfect cube."));
 
 	SetBCCLattice(Lx, Lx, Lx);
 }
 
-template <>
-void CStaticState<3>::SetBCCLattice(int Lx, int Ly, int Lz)
+template <int Dim>
+void CStaticState<Dim>::SetBCCLattice(int Lx, int Ly, int Lz)
 {
+	if(Dim!=3)	throw(CException("CStaticState<Dim>::SetBCCLattice","Can only set BCC lattice in 3d."));
+
 	const int NP_per_cell = 2;
 	const int Ncells = Lx*Ly*Lz;
 	Eigen::Vector3i Ncellxyz;
 	Ncellxyz << Lx, Ly, Lz;
-	if( NP_per_cell*Ncells != NP) throw(CException("CStaticState<3>::SetBCCLattice","Incorrect number of particles for creating an BCC lattice."));
+	if( NP_per_cell*Ncells != N) throw(CException("CStaticState<3>::SetBCCLattice","Incorrect number of particles for creating an BCC lattice."));
 
 	//Calculate the lattice vectors. The unit cell will be a (rectangular) cube with edge lengths (a[0], a[1], a[2]).
 	dvec a;
-	for(int dd=0; dd<DIM; ++dd) a[dd] = 1./((dbl)Ncellxyz[dd]);
+	for(int dd=0; dd<Dim; ++dd) a[dd] = 1./((dbl)Ncellxyz[dd]);
 	
 	//calculate the locations of the 2 particles relative to the (0,0,0) corner on the cell
-	dbl rel_pos[NP_per_cell][DIM];
+	dbl rel_pos[NP_per_cell][Dim];
 	dbl offset_fraction = 0.1;
 	for(int dd=0; dd<Dim; ++dd)
 	{
@@ -479,7 +488,7 @@ void CStaticState<3>::SetBCCLattice(int Lx, int Ly, int Lz)
 	//Now place the particles
 	Eigen::Vector3i cxyz;
 	int p, dd, cell;
-	for(int i=0; i<NP; ++i)
+	for(int i=0; i<N; ++i)
 	{
 		p = i%NP_per_cell;
 		cell = i/NP_per_cell;

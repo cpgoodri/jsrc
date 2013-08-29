@@ -13,8 +13,9 @@ CException::CException(string _Function, string _Error)
 {
 	Function = _Function;
 	Error = _Error;
+	std::cout << "Creating CException:\n" << (*this);
 }
-	
+
 const string &CException::GetFunction() const
 {
 	return Function;

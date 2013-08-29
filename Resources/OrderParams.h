@@ -2,8 +2,16 @@
 #define ORDER_PARAM_H
 
 #include "std_include.h"
+#include "Exception.h"
 //#include "std_fns.h"
-#include "ylm.h"
+#include "Ylm.h"
+//#include "../Computers/BondList.h"
+
+
+namespace LiuJamming
+{
+
+template <int Dim> class CBondList;
 
 template <int Dim>
 class LocalOrder
@@ -25,7 +33,7 @@ public:
 	vector< dbl> fi;
 
 
-	LocalOrder(CBondList<Dim> const &_bonds, int _NP, int _l=6);
+	LocalOrder(CBondList<Dim> const &_bonds, int _l=6);
 private:
 	void init();
 
@@ -36,14 +44,16 @@ public:
 	void Calculate(dbl thresh=0.7);
 };
 
-template <> LocalOrder<2>::LocalOrder(CBondList<Dim> &_bonds, int _NP, int _l)
-	: pbonds(&_bonds), NP(_NP), l(_l), Nbonds(pbonds->GetNBonds()), num_m(1)
+static int set_num_m(int Dim, int _l)
 {
-	init();
+	if(Dim==2) return 1;
+	if(Dim==3) return 2*_l+1;
+	throw( CException("set_num_m","Cannot construct a LocalOrder object for the requested dimension.") );
+	return 0;
 }
 
-template <> LocalOrder<3>::LocalOrder(CBondList<Dim> &_bonds, int _NP, int _l)
-	: pbonds(&_bonds), NP(_NP), l(_l), Nbonds(pbonds->GetNBonds()), num_m(2*l+1)
+template <int Dim> LocalOrder<Dim>::LocalOrder(CBondList<Dim> const &_bonds, int _l)
+	: pbonds(&_bonds), NP(pbonds->GetN()), l(_l), Nbonds(pbonds->GetNBonds()), num_m(set_num_m(Dim,_l))
 {
 	init();
 }
@@ -185,7 +195,7 @@ template<int Dim> void LocalOrder<Dim>::Calculate(dbl thresh)
 
 
 
-
+}
 
 
 
