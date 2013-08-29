@@ -1,4 +1,4 @@
-DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
+DIR = /data0/home/cpgoodri/jmodes/projects/crystal2ptJ/nonaffine_response/jsrc
 #DIR = /home/cpgoodri/projects/test3/jsrc
 
 name=test

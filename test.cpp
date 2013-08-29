@@ -127,6 +127,21 @@ int SamTest(int N=32, dbl Lp=-1.0, int rec=0)
 }
 */
 
+void test_orderparam(int N, dbl phi, int seed)
+{
+	//Create the system
+	CStaticState<DIM> System(N);
+//	System.RandomizePositions(seed);
+	System.RandomizePositions(seed);
+	System.SetRadiiMono();
+	System.SetPackingFraction(phi);
+
+	//Minimize the energy:
+	System.AssumeRectangularSymmetry(); //This gives a slight performance boost.
+	CStaticComputer<DIM> Computer(System);
+	CSimpleMinimizer<DIM> miner(Computer, CSimpleMinimizer<DIM>::FIRE);
+}
+
 void test0(int N, dbl phi, int seed)
 {
 	//Create the system

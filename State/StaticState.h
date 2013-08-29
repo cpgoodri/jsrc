@@ -116,7 +116,9 @@ public:
 	void SetHexLattice();						//!<Set positions to be in a hexagonal lattice (only in 2d)
 //Set 3d lattices
 	void SetFCCLattice();						//!<Set positions to be in an FCC lattice (only in 3d)
+	void SetFCCLattice(int Lx, int Ly, int Lz);	//!<Set positions to be in an FCC lattice (only in 3d)
 	void SetBCCLattice();						//!<Set positions to be in a BCC lattice (only in 3d)
+	void SetBCCLattice(int Lx, int Ly, int Lz);	//!<Set positions to be in a BCC lattice (only in 3d)
 
 	void SetRadiiMono();										//!<Set all diameters to 1.
 	void SetRadiiBi(dbl FracSmall = 0.5, dbl SizeRatio = 1.4);	//!<Set bidisperse size distribution, with average diameter of 1.
@@ -373,6 +375,123 @@ void CStaticState<Dim>::SetSquareLattice(int Lx, int Ly)
 		}
 }
 
+template <>
+void CStaticState<3>::SetFCCLattice()
+{
+	const int NP_per_cell = 4;
+	const int Ncells = NP/NP_per_cell;
+	if( NP%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetFCCLattice","NP must be divisible by 4."));
+
+	//Calcuate the number of cells in each direction
+	//right now this is only set up for Ncellx = Ncelly = Ncellz
+	int Lx;
+	bool correct_Ncells = IsPerfectRoot(Ncells, Dim, Lx); //This returns Lx
+	if( !correct_Ncells ) throw(CException("CStaticState<3>::SetFCCLattice","The number of FCC cells must be a perfect cube."));
+
+	SetFCCLattice(Lx, Lx, Lx);
+}
+
+
+template <>
+void CStaticState<3>::SetFCCLattice(int Lx, int Ly, int Lz)
+{
+	const int NP_per_cell = 4;
+	const int Ncells = Lx*Ly*Lz;
+	Eigen::Vector3i Ncellxyz;
+	Ncellxyz << Lx, Ly, Lz;
+	if( NP_per_cell*Ncells != NP) throw(CException("CStaticState<3>::SetFCCLattice","Incorrect number of particles for creating an FCC lattice."));
+	
+	//Calculate the lattice vectors. The unit cell will be a (rectangular) cube with edge lengths (a[0], a[1], a[2]).
+	dvec a;
+	for(int dd=0; dd<Dim; ++dd) a[dd] = 1./((dbl)Ncellxyz[dd]);
+	
+	//calculate the locations of the 4 particles relative to the (0,0,0) corner on the cell
+	dbl rel_pos[NP_per_cell][Dim];
+	dbl offset_fraction = 0.1;	//add a small offset so that positions are not EXACTLY on the boundary of the box.
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		rel_pos[0][dd] = 0. + offset_fraction*a[dd];
+		for(int p=1; p<NP_per_cell; ++p)
+		{
+			if(p==dd+1)
+				rel_pos[p][dd] = 0. + offset_fraction*a[dd];
+			else
+				rel_pos[p][dd] = a[dd]/2. + offset_fraction*a[dd];
+		}
+	}
+
+	//Now place the particles
+	//	This is not very efficient, but who cares.
+	Eigen::Vector3i cxyz;
+	int p, dd, cell;
+	for(int i=0; i<NP; ++i)
+	{
+		p = i%NP_per_cell;
+		cell = i/NP_per_cell;
+		cxyz[0] = cell%Ncellxyz[0];
+		cxyz[1] = (cell%(Ncellxyz[0]*Ncellxyz[1]))/Ncellxyz[0];
+		cxyz[2] = cell/(Ncellxyz[0]*Ncellxyz[1]);
+		for(dd=0; dd<DIM; ++dd)
+		{
+			Positions(Dim*i+dd) = a[dd]*cxyz[dd] + rel_pos[p][dd];
+		}
+	}
+}
+
+template <>
+void CStaticState<3>::SetBCCLattice()
+{
+	const int NP_per_cell = 2;
+	const int Ncells = NP/NP_per_cell;
+	if( NP%NP_per_cell != 0 ) throw(CException("CStaticState<3>::SetBCCLattice","NP must be divisible by 2."));
+
+	//Calcuate the number of cells in each direction
+	//right now this is only set up for Ncellx = Ncelly = Ncellz
+	int Lx;
+	bool correct_Ncells = is_perfect_root(Ncells, DIM, Lx); //This returns Lx
+	if( !correct_Ncells ) throw(CException("CStaticState<3>::SetBCCLattice","The number of BCC cells must be a perfect cube."));
+
+	SetBCCLattice(Lx, Lx, Lx);
+}
+
+template <>
+void CStaticState<3>::SetBCCLattice(int Lx, int Ly, int Lz)
+{
+	const int NP_per_cell = 2;
+	const int Ncells = Lx*Ly*Lz;
+	Eigen::Vector3i Ncellxyz;
+	Ncellxyz << Lx, Ly, Lz;
+	if( NP_per_cell*Ncells != NP) throw(CException("CStaticState<3>::SetBCCLattice","Incorrect number of particles for creating an BCC lattice."));
+
+	//Calculate the lattice vectors. The unit cell will be a (rectangular) cube with edge lengths (a[0], a[1], a[2]).
+	dvec a;
+	for(int dd=0; dd<DIM; ++dd) a[dd] = 1./((dbl)Ncellxyz[dd]);
+	
+	//calculate the locations of the 2 particles relative to the (0,0,0) corner on the cell
+	dbl rel_pos[NP_per_cell][DIM];
+	dbl offset_fraction = 0.1;
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		rel_pos[0][dd] = (0.0 + offset_fraction)*a[dd];
+		rel_pos[1][dd] = (0.5 + offset_fraction)*a[dd];
+	}
+
+	//Now place the particles
+	Eigen::Vector3i cxyz;
+	int p, dd, cell;
+	for(int i=0; i<NP; ++i)
+	{
+		p = i%NP_per_cell;
+		cell = i/NP_per_cell;
+		cxyz[0] = cell%Ncellxyz[0];
+		cxyz[1] = (cell%(Ncellxyz[0]*Ncellxyz[1]))/Ncellxyz[0];
+		cxyz[2] = cell/(Ncellxyz[0]*Ncellxyz[1]);
+		for(dd=0; dd<Dim; ++dd)
+		{
+			Positions(Dim*i+dd) = a[dd]*cxyz[dd] + rel_pos[p][dd];
+		}
+	}
+}
 
 template <int Dim>
 void CStaticState<Dim>::SetRadiiMono()

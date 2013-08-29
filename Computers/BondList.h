@@ -58,6 +58,7 @@ public:
 	dbl GetVolume() const;			//!<Get the volume.
 
 	void GetBond(int i, BOND &b) const; //!<Copy a bond 
+	BOND& operator[](int i) const;
 
 	bool Empty() const;				//!<Returns true if the bond list is empty.
 
@@ -106,7 +107,7 @@ public:
 	//void ComputeEquilibriumMatrix_BZ(Eigen::SparseMatrix<dbl> &Amatrix, dvec k) const;
 
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
-	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
+	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 
 	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
@@ -216,6 +217,11 @@ void CBondList<Dim>::GetBond(int i, BOND &b) const
 	assert(i>=0);
 	assert(i<GetNBonds());
 	b = list[i];
+}
+template<int Dim>
+BOND& CBondList<Dim>::operator[](int i) const
+{
+	return list[i];
 }
 
 template<int Dim>
@@ -867,6 +873,8 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 template<int Dim>
 void CBondList<Dim>::CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
 {
+	int Nvar = Dim*N;
+
 	MatrixInterface<dbl> D1;
 	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
 	D1.LUdecomp();
