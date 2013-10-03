@@ -206,13 +206,19 @@ CPotential* CPotential::NetCDFRead(NcFile &file, int record)
 //	if(!CheckNetCDF(file))							throw(CException("CPotential::NetCDFRead","Attempting to read a potential from a file that has no appropriate data."));
 
 	PrepareNetCDF(file,true);
-	if(record>=file.get_dim("Records")->size())		throw(CException("CPotential::NetCDFRead","Attempting to read a potential from a record that does not exist."));
+	if(record>=file.get_dim("rec")->size())		throw(CException("CPotential::NetCDFRead","Attempting to read a potential from a record that does not exist."));
 	
 	char c_str[STRING_SIZE];
 	NcVar *PotStringVar= file.get_var("PotString");
-	PotStringVar -> set_cur(record);
+	PotStringVar -> set_cur(record,0);
 	PotStringVar -> get(&c_str[0], 1, STRING_SIZE);
-	string str = c_str;
+	
+	string str;
+	for(int i=0; i<STRING_SIZE; ++i)
+		str.push_back(c_str[i]);
+	//The above loop is to correct the following problem: c_str, for whatever reason, doesn't have the actual length of STRING_SIZE, so str can have random garbage at the end of the 128 characters.
+	//string str = c_str;
+	
 	return SetFromString(str);
 }
 #endif 
