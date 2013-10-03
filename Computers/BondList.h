@@ -108,6 +108,7 @@ public:
 
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
 	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
+	void CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 
 	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
@@ -873,11 +874,17 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 template<int Dim>
 void CBondList<Dim>::CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
 {
-	int Nvar = Dim*N;
-
 	MatrixInterface<dbl> D1;
 	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
 	D1.LUdecomp();
+
+	CalculateDetailedResponse(D1, strain_tensor, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
+}
+
+template<int Dim>
+void CBondList<Dim>::CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
+{
+	int Nvar = Dim*N;
 
 	n_d2Udvdgamma = Eigen::VectorXd::Zero(Nvar);
 	uNonAffine_node = Eigen::VectorXd::Zero(Nvar);

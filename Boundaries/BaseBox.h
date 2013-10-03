@@ -97,9 +97,9 @@ public:
 	
 //functions to read and write box configurations
 	//static string GetName() const = 0;
-	virtual string DataToString() const = 0;
- 	virtual void StringToData(string Data) = 0;
- 	virtual CBox* Clone() const = 0;
+	virtual string DataToString() const		= 0;
+	virtual void StringToData(string Data)	= 0;
+	virtual CBox* Clone() const				= 0;
 
 	void SetSymmetry(int symmetry);	//!<Set the assumed box symmetry
 	int  GetSymmetry() const;		//!<Get the assumed box symmetry
@@ -121,9 +121,9 @@ public:
 	virtual void GetPeriodicDimensions(std::vector<int> &) const = 0; //!<get a list of the periodic dimensions
 	
 //functions involving the boundary
-	virtual void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const = 0;
-	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const = 0; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
-	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const = 0;
+	virtual void MoveParticles(Eigen::VectorXd &Points, const Eigen::VectorXd &Displacements) const		= 0;
+	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const							= 0; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
+	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const	= 0;
 	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const = 0;
 
 	void GetMaxTransformedDistance(dvec &dist) const;
@@ -151,7 +151,6 @@ CBox<Dim>* CBox<Dim>::SetFromStringAndMatrix(string str, dmat &trans)
 	box->SetTransformation(trans);
 	return box;
 }
-
 
 
 /*
@@ -196,17 +195,17 @@ CBox<Dim> *CBox<Dim>::Read(const NcFile &file,int record)
 template <int Dim>
 CBox<Dim>::CBox(int symmetry)
 {
-	Transformation = dmat::Identity();
-	Inverse_Transformation = dmat::Identity();
-	BoxSymmetry = symmetry;
+	Transformation			= dmat::Identity();
+	Inverse_Transformation	= dmat::Identity();
+	BoxSymmetry				= symmetry;
 }
 
 template <int Dim>
 CBox<Dim>::CBox(const dmat &Trans, int symmetry)
 {
-	Transformation = Trans;
-	Inverse_Transformation = Transformation.inverse();
-	BoxSymmetry = symmetry;
+	Transformation			= Trans;
+	Inverse_Transformation	= Transformation.inverse();
+	BoxSymmetry				= symmetry;
 }
 	
 template <int Dim>
@@ -221,8 +220,8 @@ const CBox<Dim>& CBox<Dim>::operator=(const CBox<Dim> &box)
 	if(this != &box)
 	{
 		box.GetTransformation(Transformation);
-		Inverse_Transformation = Transformation.inverse();
-		BoxSymmetry = box.BoxSymmetry;
+		Inverse_Transformation	= Transformation.inverse();
+		BoxSymmetry				= box.BoxSymmetry;
 	}
 	return *this;
 }

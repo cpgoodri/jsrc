@@ -169,7 +169,7 @@ void CPotential::PopulateNetCDF(NcFile &file)
 
 void CPotential::PrepareNetCDF(NcFile &file, bool CheckOnly)
 {
-	NcError err(NcError::verbose_nonfatal);
+	NcError err(NcError::silent_nonfatal);
 	if(!file.is_valid())	throw(CException("CPotential::CheckNetCDF","NetCDF file is not valid."));
 
 	//Attempt to load the dimensions and variables

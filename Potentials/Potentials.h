@@ -31,7 +31,7 @@ static std::map<string,CPotential*> CreatePotentialMap()
 	//For each potential...
 	p = new CHarmonicPotential(); m[CHarmonicPotential::GetName()] = p;
 	p = new CHertzianPotential(); m[CHertzianPotential::GetName()] = p;
-	p = new CSoftPotential();     m[CSoftPotential    ::GetName()] = p;
+	p = new CSoftPotential();     m[CSoftPotential::GetName()] = p;
 
 	return m;
 }

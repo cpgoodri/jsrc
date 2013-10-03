@@ -5,7 +5,8 @@ INCLUDE = \
 -I/data1/jamming/cpp/arpack++/include \
 -I/data1/jcode/local/include/SuiteSparse \
 -I/usr/global/netcdf-4.1.1-i11/include \
--I/data1/jcode/local/include
+-I/data1/jcode/local/include/eigen3.2.0
+#-I/data1/jcode/local/include
 #-I/usr/global/netcdf-4.1.1-i11/include \
 -I/data0/home/cpgoodri/jmodes/cpp/netcdf-4.1.3/include \
 -I/data1/jcode/local/include/netcdf4 \

@@ -149,13 +149,45 @@ CStaticComputer<Dim>::CStaticComputer() : FixDof(false), UseGrid(true)
 template <int Dim>
 CStaticComputer<Dim>::CStaticComputer(CStaticState<Dim> &_State) : State(_State), Grid(&State), FixDof(false), UseGrid(true)
 {	
-	Grid.Allocate();
+//	Grid.Allocate();
+
+	dvec MaxDistance;
+	State.GetMaxDistance(MaxDistance);
+	bool enough_cells = true;
+	for (int dd = 0; dd< Dim; ++dd)
+		if((int) floor(1.0/MaxDistance[dd])<3) enough_cells = false;
+
+	if(enough_cells)
+	{
+		SetUseGrid(true);
+		Grid.Allocate();
+	}else
+	{
+		printf("Turning off the grid...\n");
+		SetUseGrid(false);
+	}
 }
 
 template <int Dim>
 CStaticComputer<Dim>::CStaticComputer(const CStaticComputer<Dim> &_Copy) : State(_Copy.State), Grid(&State), FixDof(_Copy.FixDof), FixedDof(_Copy.FixedDof), UseGrid(_Copy.UseGrid)
 {
-	Grid.Allocate();
+//	Grid.Allocate();
+
+	dvec MaxDistance;
+	State.GetMaxDistance(MaxDistance);
+	bool enough_cells = true;
+	for (int dd = 0; dd< Dim; ++dd)
+		if((int) floor(1.0/MaxDistance[dd])<3) enough_cells = false;
+
+	if(enough_cells)
+	{
+		SetUseGrid(true);
+		Grid.Allocate();
+	}else
+	{
+		printf("Turning off the grid...\n");
+		SetUseGrid(false);
+	}
 }
 
 

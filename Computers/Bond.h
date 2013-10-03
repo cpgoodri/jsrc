@@ -35,6 +35,9 @@ public:
 //! @name Misc.
 ///@{
 	void CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const;						//!<Calculate blocks for the hessian.
+
+	dbl CalculateEnergyChange(dvec const &DeltaR, dbl unstress_coeff=1., dbl stress_coeff=1.) const;
+
 	void print() const;															//!<Print the bond to the terminal.
 
 ///@}
@@ -94,6 +97,20 @@ void CBond<Dim>::CalculateMatrixBlocks(dmat &Fij, dmat &Kij) const
 	Fij = -g*(dmat::Identity() - r*(r.transpose())/POW2(rlen))/rlen;
 	Kij = -k*r*(r.transpose())/POW2(rlen);
 }
+
+template<int Dim>	
+dbl CBond<Dim>::CalculateEnergyChange(dvec const &DeltaR, dbl unstress_coeff, dbl stress_coeff) const
+{
+	dbl gt, kt, DeltaRparallel2, DeltaRperp2;
+	
+	gt = g*stress_coeff;
+	kt = k*unstress_coeff;
+	DeltaRparallel2 = POW2(DeltaR.dot(r)/rlen);
+	DeltaRperp2     = DeltaR.squaredNorm() - DeltaRparallel2;
+
+	return 0.5*(kt*DeltaRparallel2 + gt*DeltaRperp2/rlen);
+}
+
 
 template<int Dim>
 void CBond<Dim>::print() const

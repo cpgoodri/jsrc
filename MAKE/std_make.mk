@@ -2,6 +2,7 @@ srcDIR = $(DIR)
 
 srcOBJGQS = \
 Computers/cijkl.o \
+Computers/UmfpackInterface.o \
 Resources/Resources.o \
 Resources/Exception.o \
 Resources/index_map.o \
@@ -45,6 +46,7 @@ StandardDependencies = \
 	$(srcDIR)/Potentials/*.h \
 	$(srcDIR)/Resources/*.h \
 	$(srcDIR)/State/*.h
+
 
 
 #    $@  means "the target"

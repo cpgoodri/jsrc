@@ -13,6 +13,7 @@
 
 #ifndef DONT_USE_SUITESPARSE
 	#include <Eigen/UmfPackSupport>
+	#include "UmfpackInterface.h"
 #endif
 
 namespace LiuJamming
@@ -134,8 +135,11 @@ public:
 	bool UseShiftAndInvert;
 
 #ifndef DONT_USE_SUITESPARSE
+	typedef UmfpackInterface SolverType;
+//	typedef Eigen::SparseLU <EMatrix> SolverType;
+//	typedef Eigen::UmfPackLU<EMatrix> SolverType;
 	//Solver for UMFPACK
-	Eigen::UmfPackLU<EMatrix> UMFsolver;
+	SolverType Solver;
 	bool LUdecomposed;
 #endif
 
@@ -414,10 +418,19 @@ template<typename T>
 void MatrixInterface<T>::LUdecomp()
 {
 #ifndef DONT_USE_SUITESPARSE
-	UMFsolver.compute(A);
-	if(UMFsolver.info()!=Eigen::Success) 
+	Solver.compute(A);
+	if(Solver.info()!=Eigen::Success) 
 	{
-		printf("ERROR: Eigen::UmfPackLU decomposition failed\n");	
+		char message[256];
+		switch(Solver.info())
+		{
+			case Eigen::NumericalIssue:	sprintf(message, "Numerical Issue"); break;
+			case Eigen::NoConvergence:	sprintf(message, "No Convergence"); break;
+			case Eigen::InvalidInput:	sprintf(message, "Invalid Input"); break;
+			default:					sprintf(message, "Unknown Eigen Error");
+		}
+
+		printf("ERROR: Eigen::UmfPackLU decomposition failed. Error info flag = %i (%s)\n", Solver.info(), message);	
 		exit(EXIT_FAILURE);
 	}
 	LUdecomposed = true;
@@ -433,7 +446,7 @@ void MatrixInterface<T>::solve_Mx_equals_b(EVector &X, EVector const &B)
 {
 #ifndef DONT_USE_SUITESPARSE
 	if(!LUdecomposed) LUdecomp();
-	X = UMFsolver.solve(B);
+	X = Solver.solve(B);
 #else
 	printf("ERROR: Umfpack is turned off.\n"); 
 	fflush(stdout);
@@ -448,7 +461,7 @@ void MatrixInterface<T>::solve_Mx_equals_b(T *x, T const *b)
 	Eigen::Map<      EVector> X(&x[0], A.rows());
 	Eigen::Map<const EVector> B(&b[0], A.rows());
 	if(!LUdecomposed) LUdecomp();
-	X = UMFsolver.solve(B);
+	X = Solver.solve(B);
 	//solve_Mx_equals_b(X,B);
 #else
 	printf("ERROR: Umfpack is turned off.\n"); 

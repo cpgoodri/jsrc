@@ -1,7 +1,7 @@
 DIR = /data0/home/cpgoodri/jmodes/projects/crystal2ptJ/nonaffine_response/jsrc
 #DIR = /home/cpgoodri/projects/test3/jsrc
 
-name=test
+name=test3
 obj=$(name).o
 
 

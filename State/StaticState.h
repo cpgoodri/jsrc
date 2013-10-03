@@ -51,6 +51,7 @@
 #include "../Potentials/Potentials.h" //This loads all the potentials
 #include "../Boundaries/Boxes.h"
 #include "../Boundaries/PeriodicBox.h"
+#include "../Resources/index_map.h"
 //#include "netcdfcpp.h"
 #include "../Resources/MersenneTwister.h"
 #include "../Resources/RNG_taus.h"
@@ -90,11 +91,12 @@ private:
 	
 public:
 //Constructors/Destructors and copy operators
-	CStaticState();													//!<Default constructor
-	CStaticState(int _N);											//!<Primary constructor
-	CStaticState(CStaticState const &copy);							//!<Copy constructor
-	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);	//!<Copy operator
-	~CStaticState();												//!<Destructor
+	CStaticState();														//!<Default constructor
+	CStaticState(int _N);												//!<Primary constructor
+	CStaticState(CStaticState const &copy);								//!<Copy constructor
+	CStaticState(CStaticState const &copy, index_map const &IncludeMap);//!<Copy only the particles indicated in IncludeMap
+	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);		//!<Copy operator
+	~CStaticState();													//!<Destructor
 
 
 //Set potential
@@ -240,6 +242,32 @@ CStaticState<Dim>::CStaticState(CStaticState<Dim> const &copy)
 	  Potential(NULL)
 {
 	(*this) = copy;
+}
+
+template<int Dim>	
+CStaticState<Dim>::CStaticState(CStaticState const &copy, index_map const &IncludeMap)
+	: N(0),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	assert(IncludeMap.full_size == copy.GetParticleNumber());
+	N = IncludeMap.size();
+
+	if(Box!=NULL)		delete Box;
+	if(Potential!=NULL)	delete Potential;
+	
+	Box			= copy.GetBox()->Clone();		//Clone() gives a deep copy
+	Potential	= copy.GetPotential()->Clone();	//Clone() gives a deep copy
+
+	Positions = Eigen::VectorXd::Zero(Dim*N);
+	Radii = Eigen::VectorXd::Zero(N);
+	dvec ptemp;
+	for(int im=0; im<IncludeMap.size(); ++im)
+	{
+		copy.GetParticlePositionVirtual(ptemp, IncludeMap[im]);
+		SetParticlePositionVirtual(ptemp, im);
+		SetRadius(im, copy.GetRadius(IncludeMap[im]));
+	}
 }
 
 template<int Dim>	

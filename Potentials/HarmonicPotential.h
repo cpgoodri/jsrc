@@ -1,7 +1,7 @@
-#include "BasePotential.h"
-
 #ifndef HARMONIC_POTENTIAL
 #define HARMONIC_POTENTIAL
+
+#include "BasePotential.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 //Harmonic Potential class. 

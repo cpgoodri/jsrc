@@ -26,7 +26,7 @@ private:
 	typedef CStaticState<Dim> STATE;
 	int NP;
 	NcDim *recDim, *dimDim, *dm2Dim, *NPDim, *dofDim, *strDim;
-	NcVar *posVar, *radVar, *BoxMatrixVar, *BoxStringVar, *PotStringVar;
+	NcVar *posVar, *radVar, *BoxMatrixVar, *BoxStringVar;//, *PotStringVar;
 
 	int Current;
 
@@ -115,7 +115,6 @@ void CStaticDatabase<Dim>::GetDimVar()
 	radVar			= File.get_var("rad");
 	BoxMatrixVar	= File.get_var("BoxMatrix");
 	BoxStringVar	= File.get_var("BoxString");
-//	PotStringVar	= File.get_var("PotString");
 }
 
 
@@ -150,9 +149,7 @@ void CStaticDatabase<Dim>::WriteState(STATE const &s, int rec)
 	//Create some temporary storage
 	Eigen::Matrix<dbl,Dim,Dim> trans;
 	char BoxCString[DB_STRING_SIZE];
-//	char PotCString[DB_STRING_SIZE];
 	string BoxString;
-//	string PotString;
 
 	//Prepare the box and potential data
 	//BoxMatrix
@@ -160,17 +157,12 @@ void CStaticDatabase<Dim>::WriteState(STATE const &s, int rec)
 	//Box String
 	BoxString = s.GetBox()->DataToString();
 	CopyString(BoxCString, BoxString, DB_STRING_SIZE, ':');
-	//Potential String
-//	PotString = s.GetPotential()->DataToString();
-//	CopyString(PotCString, PotString, DB_STRING_SIZE, ':');
 
 	//Write all the data
 	posVar		->put_rec(&s.Positions[0],	rec);
 	radVar		->put_rec(&s.Radii[0],		rec);
 	BoxMatrixVar->put_rec(trans.data(),		rec);
 	BoxStringVar->put_rec(&BoxCString[0],	rec);
-//	PotStringVar->put_rec(&PotCString[0],	rec);
-
 	s.GetPotential()->NetCDFWrite(File, rec);
 }
 
@@ -192,13 +184,11 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 	radVar			-> set_cur(rec);
 	BoxMatrixVar	-> set_cur(rec);
 	BoxStringVar	-> set_cur(rec);
-	PotStringVar	-> set_cur(rec);
 
 	posVar			->get(&s.Positions[0],	1, dofDim->size());
 	radVar			->get(&s.Radii[0],		1, NPDim->size());
 	BoxMatrixVar	->get(trans.data(),		1, dm2Dim->size());
 	BoxStringVar	->get(&BoxCString[0],	1, strDim->size());
-	PotStringVar	->get(&PotCString[0],	1, strDim->size());
 
 	//Set the box
 	s.Box = CBox<Dim>::SetFromStringAndMatrix(BoxCString,trans);
