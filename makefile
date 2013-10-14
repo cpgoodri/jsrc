@@ -1,5 +1,5 @@
-DIR = /data0/home/cpgoodri/jmodes/projects/crystal2ptJ/nonaffine_response/jsrc
-#DIR = /home/cpgoodri/projects/test3/jsrc
+#DIR = /data0/home/cpgoodri/jmodes/projects/crystal2ptJ/nonaffine_response/jsrc
+DIR = /home/cpgoodri/projects/test4/jsrc
 
 name=test3
 obj=$(name).o
@@ -8,7 +8,7 @@ obj=$(name).o
 Walnut_NAME=walnut
 Fiji_NAME=fiji
 #COMPUTER_NAME=walnut
-COMPUTER_NAME=fiji
+COMPUTER_NAME=walnut
 
 
 prjDIR = .

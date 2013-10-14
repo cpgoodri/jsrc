@@ -177,7 +177,7 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 	
 	Eigen::Matrix<dbl,Dim,Dim> trans;
 	char BoxCString[DB_STRING_SIZE];
-	char PotCString[DB_STRING_SIZE];
+	//char PotCString[DB_STRING_SIZE];
 
 	//Read the data from the database
 	posVar			-> set_cur(rec);
@@ -194,7 +194,8 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 	s.Box = CBox<Dim>::SetFromStringAndMatrix(BoxCString,trans);
 
 	//Set the potential
-	s.Potential = CPotential::SetFromString(PotCString);
+	s.Potential = CPotential::NetCDFRead(File, rec);
+	//s.Potential = CPotential::SetFromString(PotCString);
 }
 
 

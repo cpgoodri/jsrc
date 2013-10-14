@@ -18,8 +18,6 @@ void test1(int N, dbl phi, int seed)
 
 
 
-for(int ii=0; ii<5; ii++)
-{
 
 	//db.OpenReplace();
 
@@ -27,7 +25,7 @@ for(int ii=0; ii<5; ii++)
 	CStaticState<DIM> s(N);
 
 
-if(true)
+if(false)
 {
 	s.RandomizePositions(seed);
 	s.SetRadiiPolyUniform();
@@ -39,7 +37,7 @@ if(true)
 	CStaticComputer<DIM> c(s);
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
 	
-	db.WriteState(s, ii);
+	db.WriteState(s, 4);
 }else{
 	CStaticDatabase<DIM> db(N,"temp2.nc",NcFile::ReadOnly);
 	db.ReadState(s,0);
@@ -49,7 +47,6 @@ if(true)
 }
 
 
-}
 
 }
 

@@ -78,7 +78,7 @@ public:
 	static void		PopulateNetCDF(NcFile &file);
 	static void		PrepareNetCDF(NcFile &file, bool CheckOnly);
 	void			NetCDFWrite(NcFile &file, int record);
-	CPotential*		NetCDFRead(NcFile &file, int record);
+	static CPotential*		NetCDFRead(NcFile &file, int record);
 #endif
 ///@}
 
