@@ -96,11 +96,13 @@ public:
 	dbl  ComputeGradient(Eigen::VectorXd &grad) const;	//!<Compute the Dim*N dimensional energy gradient (i.e. -Fnet), and return the energy.
 	dbl  ComputeGradient(Eigen::VectorXd &grad, vector<bool> const &FixedDOF) const;
 
-	void ComputeHessianElements(vector<TRIP> &coefficients, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;				//!<Compute the elements of the hessian as a list.
+	void ComputeHessianElements(vector<TRIP> &coefficients, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;							//!<Compute the elements of the hessian as a list.
+	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;								//!<Compute the hessian, note: the hessian is NOT mass-normalized.
+	void ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, dmat const &strain, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;//!<Compute the generalized hessian with one additional degree of freedom associated with the strain tensor "strain"
+	
 	void PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const;
 	//void ComputeHessianElements(vector<cTRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;	//!<Compute the elements of the hessian as a list.
-	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;					//!<Compute the hessian, note: the hessian is NOT mass-normalized.
-	void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;		//!<Compute the hessian at non-zero wavevector k, note: the hessian is NOT mass-normalized.
+	//void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;		//!<Compute the hessian at non-zero wavevector k, note: the hessian is NOT mass-normalized.
 
 	//void ComputeEquilibriumMatrixElements(vector<cTRIP> &coefficients, dvec k) const;
 	void ComputeEquilibriumMatrix   (Eigen::SparseMatrix<dbl> &Amatrix) const;
@@ -604,6 +606,76 @@ void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dbl unst
 		coefficients.push_back( TRIP(ii, ii, tether) );
 }
 
+
+/**
+ *	This is the primary method for calculating the hessian, which is returned as an Eigen::SparseMatrix<dbl> through the parameter hess.
+ *
+ *	@param[out] hess Eigen::SparseMatrix<dbl> representing the hessian.
+ *	@param[in] unstress_coeff A dbl indicating the weight given to the unstressed component of the hessian. For most purposes, this should be set to 1 (default).
+ *	@param[in] stress_coeff A dbl indicating the weight given to the stressed component of the hessian. For most purposes, this should be set to 1 (default). 
+ *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
+ *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
+ */
+template<int Dim>
+void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
+{
+	//First, compute the matrix elements
+	vector<TRIP> coeffs;
+	ComputeHessianElements(coeffs, unstress_coeff, stress_coeff, tether);
+	
+	//Create the matrix from the elements
+	Eigen::SparseMatrix<dbl> temp(Dim*N,Dim*N);
+	hess = temp;
+	hess.setFromTriplets(coeffs.begin(), coeffs.end());
+	assert(hess.isCompressed());
+}
+
+
+template<int Dim>
+void CBondList<Dim>::ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, dmat const &strain, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
+{
+	//First, compute the matrix elements
+	vector<TRIP> coeffs;
+	ComputeHessianElements(coeffs, unstress_coeff, stress_coeff, tether);
+
+	//Calculate the elements from the strain interactions.
+	Eigen::VectorXd n_d2Udvdgamma = Eigen::VectorXd::Zero(Dim*N);
+	Eigen::VectorXd AffineDeltaR = Eigen::VectorXd::Zero(Dim*N);
+	Calculate_n_d2Udvdgamma(strain, n_d2Udvdgamma, AffineDeltaR, unstress_coeff, stress_coeff);
+	dbl d2Udgamma2 = 2.*CalculateEnergyChange(AffineDeltaR, unstress_coeff, stress_coeff);
+	for(int i=0; i<Dim*N; ++i)
+	{
+		coeffs.push_back( TRIP(i,Dim*N,n_d2Udvdgamma[i]) );
+		coeffs.push_back( TRIP(Dim*N,i,n_d2Udvdgamma[i]) );
+	}
+	coeffs.push_back( TRIP(Dim*N,Dim*N,d2Udgamma2) );
+
+
+	//Create the matrix from the elements
+	Eigen::SparseMatrix<dbl> temp(Dim*N+1,Dim*N+1);
+	hess = temp;
+	hess.setFromTriplets(coeffs.begin(), coeffs.end());
+	assert(hess.isCompressed());
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 template<int Dim>
 void CBondList<Dim>::PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const
 {
@@ -669,29 +741,6 @@ void CBondList<Dim>::ComputeHessianElements(vector<cTRIP> &coefficients, dvec k,
 		coefficients.push_back( cTRIP(ii, ii, cdbl(tether,0)) );
 }
 */
-
-/**
- *	This is the primary method for calculating the hessian, which is returned as an Eigen::SparseMatrix<dbl> through the parameter hess.
- *
- *	@param[out] hess Eigen::SparseMatrix<dbl> representing the hessian.
- *	@param[in] unstress_coeff A dbl indicating the weight given to the unstressed component of the hessian. For most purposes, this should be set to 1 (default).
- *	@param[in] stress_coeff A dbl indicating the weight given to the stressed component of the hessian. For most purposes, this should be set to 1 (default). 
- *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
- *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
- */
-template<int Dim>
-void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
-{
-	//First, compute the complex matrix elements with k=0
-	vector<TRIP> coeffs;
-	ComputeHessianElements(coeffs, unstress_coeff, stress_coeff, tether);
-	
-	//Create a temporary complex matrix
-	Eigen::SparseMatrix<dbl> temp(Dim*N,Dim*N);
-	hess = temp;
-	hess.setFromTriplets(coeffs.begin(), coeffs.end());
-	assert(hess.isCompressed());
-}
 
 /**
  *	This method calculates the hessian at a non-zero wavevector, returning it as an Eigen::SparseMatrix<cdbl> through the parameter hess.

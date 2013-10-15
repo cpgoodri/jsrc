@@ -16,7 +16,7 @@ LIBRARY = \
 
 #SuiteSparseLINK = -lamd -lcholmod -lcolamd -lccolamd -lcamd -lumfpack -blas
 #SuiteSparseLINK = -lumfpack -lamd -lufconfig -lcholmod -lcolamd -lblas
-SuiteSparseLINK = -lumfpack -lamd -lcholmod -lcolamd # -lblas
+SuiteSparseLINK = -lumfpack -lamd -lcholmod -lcolamd -lblas
 netCDFLINK = -lnetcdf_c++ -lnetcdf
 hdf5LINK = -lhdf5_hl -lhdf5 -lz
 intelLINK = -lifcore -limf -lm

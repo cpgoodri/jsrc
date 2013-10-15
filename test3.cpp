@@ -13,6 +13,9 @@ using namespace LiuJamming;
 #define DIM 2
 using namespace std;
 
+typedef Eigen::Matrix<dbl,DIM,DIM> dmat;
+
+
 void test1(int N, dbl phi, int seed)
 {
 
@@ -46,6 +49,32 @@ if(false)
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
 }
 
+
+
+}
+
+void test2(int N, dbl phi, int seed)
+{
+	//Create the system
+	CStaticState<DIM> s(N);
+
+	s.RandomizePositions(seed);
+	s.SetRadiiPolyUniform();
+	s.SetPackingFraction(phi);
+
+	CStaticComputer<DIM> c(s);
+	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
+
+	//Construct a bonds list and compute the bonds.
+	CBondList<DIM> bonds;
+	c.ComputeBondList(bonds);
+	bonds.RemoveRattlers(DIM+1,true);
+
+	MatrixInterface<dbl> MI;
+	dmat strain = 0.5*dmat::Identity();
+	bonds.ComputeGeneralizedHessian(MI.A, strain);
+
+	MI.VDiagonalize();
 
 
 }
@@ -84,7 +113,7 @@ int main(int argc, char* argv[])
 
 
 
-	test1(N, phi, r);
+	test2(N, phi, r);
 
 
 	
