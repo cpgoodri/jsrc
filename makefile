@@ -1,14 +1,15 @@
-DIR = /data0/home/cpgoodri/jcode/ssdirectional/jsrc
-#DIR = /home/cpgoodri/projects/test4/jsrc
+#DIR = /data0/home/cpgoodri/jcode/ssdirectional/jsrc
+DIR = /home/cpgoodri/projects/ssdirectional2/jsrc
 
-name=test3
+name=test4
 obj=$(name).o
 
-
+#define some computer names
 Walnut_NAME=walnut
 Fiji_NAME=fiji
-#COMPUTER_NAME=walnut
-COMPUTER_NAME=fiji
+
+#set this to the computer name you are using
+COMPUTER_NAME=walnut
 
 
 prjDIR = .
