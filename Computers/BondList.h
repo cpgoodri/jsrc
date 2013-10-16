@@ -631,6 +631,20 @@ void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress
 }
 
 
+/**
+ *	This computes the 'Generalized Hessian' matrix that has one extra row and column that corresponds to straining along the direction of the given strain tensor.
+ *	The hessian is returned as an Eigen::SparseMatrix<dbl> through the parameter hess.
+ *
+ *	Note that the elastic response can be written in terms of the eigenvalues of the generalized hessian. If |g> is the vector (0,0,...,1), |e_i> the ith eigenvector, lambda_i the ith
+ *		eigenvalue, the the respone is R^{-1} = sum_i (<g|e_i>)^2/lambda_i. For example, if the strain tensor was strain=((0,1/2),(1/2,0)), then R would be cxyxy.
+ *
+ *	@param[out] hess Eigen::SparseMatrix<dbl> representing the hessian.
+ *	@param[in] strain A Dim by Dim matrix representing a strain tensor.
+ *	@param[in] unstress_coeff A dbl indicating the weight given to the unstressed component of the hessian. For most purposes, this should be set to 1 (default).
+ *	@param[in] stress_coeff A dbl indicating the weight given to the stressed component of the hessian. For most purposes, this should be set to 1 (default). 
+ *	Set this to 0 (and unstress_coeff to 1) to generate the hessian for the unstressed system.
+ *	@param[in] tether A dbl indicating the strength of the tether. A value of tether is added to every diagonal element of the hessian. For most purposes, this should be set to 0 (default).
+ */
 template<int Dim>
 void CBondList<Dim>::ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, dmat const &strain, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
@@ -640,7 +654,7 @@ void CBondList<Dim>::ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, d
 
 	//Calculate the elements from the strain interactions.
 	Eigen::VectorXd n_d2Udvdgamma = Eigen::VectorXd::Zero(Dim*N);
-	Eigen::VectorXd AffineDeltaR = Eigen::VectorXd::Zero(Dim*N);
+	Eigen::VectorXd AffineDeltaR = Eigen::VectorXd::Zero(Dim*list.size());
 	Calculate_n_d2Udvdgamma(strain, n_d2Udvdgamma, AffineDeltaR, unstress_coeff, stress_coeff);
 	dbl d2Udgamma2 = 2.*CalculateEnergyChange(AffineDeltaR, unstress_coeff, stress_coeff);
 	for(int i=0; i<Dim*N; ++i)
@@ -649,7 +663,6 @@ void CBondList<Dim>::ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, d
 		coeffs.push_back( TRIP(Dim*N,i,n_d2Udvdgamma[i]) );
 	}
 	coeffs.push_back( TRIP(Dim*N,Dim*N,d2Udgamma2) );
-
 
 	//Create the matrix from the elements
 	Eigen::SparseMatrix<dbl> temp(Dim*N+1,Dim*N+1);

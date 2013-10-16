@@ -18,16 +18,8 @@ typedef Eigen::Matrix<dbl,DIM,DIM> dmat;
 
 void test1(int N, dbl phi, int seed)
 {
-
-
-
-
-	//db.OpenReplace();
-
 	//Create the system
 	CStaticState<DIM> s(N);
-
-
 if(false)
 {
 	s.RandomizePositions(seed);
@@ -48,10 +40,13 @@ if(false)
 	CStaticComputer<DIM> c(s);
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
 }
-
-
-
 }
+
+
+
+
+
+
 
 void test2(int N, dbl phi, int seed)
 {
@@ -64,17 +59,71 @@ void test2(int N, dbl phi, int seed)
 
 	CStaticComputer<DIM> c(s);
 	CSimpleMinimizer<DIM> miner(c, CSimpleMinimizer<DIM>::FIRE);
+	
+	//Prepare system for standard calculations
+	//CStaticComputer<DIM>::StdPrepareSystem() sets the internal bond list and removes rattlers
+	//it returns 0 if everything is done correctly.
+	if(c.StdPrepareSystem())
+	{
+		printf("The bonds list is empty...\n");
+		return;
+	}
+	c.CalculateStdData(); //Have option to not write down hessian.
+	c.Data.Print();
+
 
 	//Construct a bonds list and compute the bonds.
-	CBondList<DIM> bonds;
-	c.ComputeBondList(bonds);
-	bonds.RemoveRattlers(DIM+1,true);
+//	CBondList<DIM> bonds;
+//	c.ComputeBondList(bonds);
+//	bonds.RemoveRattlers(DIM+1,true);
 
 	MatrixInterface<dbl> MI;
-	dmat strain = 0.5*dmat::Identity();
-	bonds.ComputeGeneralizedHessian(MI.A, strain);
+	dmat strain = dmat::Zero();
+	strain = 0.5*dmat::Identity();
+	c.Bonds.ComputeGeneralizedHessian(MI.A, strain);
 
-	MI.VDiagonalize();
+	MI.VDiagonalize_Eigen();
+	int Nvar = DIM*c.Data.NPp+1;
+	int nc = MI.num_converged;
+
+	for(int m=0; m<50; ++m)
+	{
+		printf("%5i   % e   % e\n", m, MI.Eigenvalues[m], MI.Eigenvalues[m]/POW2(MI.Eigenvectors[Nvar*m+(Nvar-1)]));
+	}
+
+	/*
+	dbl G = 0.;
+	assert(nc == Nvar);
+	for(int m=0; m<nc; ++m)
+	{
+		G += POW2(MI.Eigenvectors[Nvar*m+(Nvar-1)])/MI.Eigenvalues[m];
+	}
+	G = 1./G;
+	G /= c.GetVolume();
+
+	dbl cxyxy = c.Data.cijkl.cxyxy;
+	printf("G     = % e\n", G);
+	printf("cxyxy = % e\n", cxyxy);
+	printf("diff  = % e\n", G-cxyxy);
+
+	*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
@@ -84,7 +133,7 @@ int main(int argc, char* argv[])
 {
 	int N = 256;			//n
 	dbl Lp = -1.0;			//p
-	dbl phi = 0.9;			//f
+	dbl phi = 0.845;			//f
 	int r = 1;				//r
 	int NFixedParticles = 0;//x
 

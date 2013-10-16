@@ -10,6 +10,7 @@
 #endif
 
 #include <Eigen/Sparse>
+#include <Eigen/Eigenvalues>
 
 #ifndef DONT_USE_SUITESPARSE
 	#include <Eigen/UmfPackSupport>
@@ -238,6 +239,12 @@ public:
 	void VDiagonalize_SI();
 	void VDiagonalize_SI(int _num_request);
 
+	//Diagonalize using a dense Eigen matrix without arpack.
+	void Diagonalize_Eigen();
+	void Diagonalize_Eigen(int _num_request);
+	void VDiagonalize_Eigen();
+	void VDiagonalize_Eigen(int _num_request);
+
 	void Report(int num_print = 30) const;
 	void CalculateResidual(EVector &Residual) const;
 
@@ -360,6 +367,64 @@ void MatrixInterface<T>::VDiagonalize_SI(int _num_request)
 	VDiagonalize(_num_request);
 }
 
+template<typename T>
+void MatrixInterface<T>::Diagonalize_Eigen()
+{
+	ClearEigenstuff();
+
+	std::cout << "Begin Diagonalization using Eigen..." << std::endl;
+	time_t start,end;
+	time(&start);
+
+	if(num_request <= 0)	num_request	= A.rows();
+	else					num_request	= std::min(A.rows(), num_request);
+	Eigenvalues = new T[num_request];
+	if(compute_vecs)
+		Eigenvectors = new T[num_request*A.rows()];
+
+	Eigen::MatrixXd matrix = A;
+	Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(matrix);
+	if (eigensolver.info() != Eigen::Success) abort();
+
+	num_converged = num_request; 
+	for(int m=0; m<num_converged; ++m)
+	{
+		Eigenvalues[m] = eigensolver.eigenvalues()[m];
+		if(compute_vecs)
+		{
+			for(int i=0; i<A.rows(); ++i)
+				Eigenvectors[A.rows()*m+i] = eigensolver.eigenvectors()(i,m);
+		}
+	}
+
+	time(&end);
+	diagonalization_time = difftime(end,start);
+	num_Mv_calls = 0;
+
+	if(verbose_diagonalize)
+		Report();
+};
+
+template<typename T>
+void MatrixInterface<T>::Diagonalize_Eigen(int _num_request)
+{
+	num_request = _num_request;
+	Diagonalize_Eigen();
+}
+
+template<typename T>
+void MatrixInterface<T>::VDiagonalize_Eigen()
+{
+	verbose_diagonalize = true;
+	Diagonalize_Eigen();
+}
+
+template<typename T>
+void MatrixInterface<T>::VDiagonalize_Eigen(int _num_request)
+{
+	verbose_diagonalize = true;
+	Diagonalize_Eigen(_num_request);
+}
 
 template<typename T>
 void MatrixInterface<T>::Report(int num_print) const
