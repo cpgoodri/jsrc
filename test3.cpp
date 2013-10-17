@@ -9,6 +9,8 @@
 #include "Minimization/minimizer.h"
 #include "Database/Database.h"
 
+#include "Resources/Clusterizer.h"
+
 using namespace LiuJamming;
 #define DIM 2
 using namespace std;
@@ -72,11 +74,38 @@ void test2(int N, dbl phi, int seed)
 	c.Data.Print();
 
 
+	vector< vector<int> > nbrs;
+	c.Bonds.CalculateNeighbors(nbrs);
+
+	//randomly set some nodes to "include"
+	std::vector<bool> include(c.Bonds.GetN(), false);
+	for(int i=0; i<c.Bonds.GetN()/2; ++i)
+		include[i] = true;
+
+	//Create a clusterizer and run the decomposition
+	CClusterizer<DIM> cizer(c.Bonds.GetN(), nbrs, include);
+	printf("Number of clusters = %i\n", cizer.GetNumClusters());
+
+	//Get all the cluseters
+	vector< vector<int> > clusters;
+	cizer.GetClusters(clusters);
+
+	//Print the clusters
+	for(int c=0; c<(int)clusters.size(); ++c)
+	{
+		printf(" cluster %5i: ", c);
+		for(int i=0; i<(int)clusters[c].size(); ++i)
+			printf("%i ", clusters[c][i]);
+		printf("\n");
+	}
+
+
 	//Construct a bonds list and compute the bonds.
 //	CBondList<DIM> bonds;
 //	c.ComputeBondList(bonds);
 //	bonds.RemoveRattlers(DIM+1,true);
 
+	/*
 	MatrixInterface<dbl> MI;
 	dmat strain = dmat::Zero();
 	strain = 0.5*dmat::Identity();
@@ -90,6 +119,7 @@ void test2(int N, dbl phi, int seed)
 	{
 		printf("%5i   % e   % e\n", m, MI.Eigenvalues[m], MI.Eigenvalues[m]/POW2(MI.Eigenvectors[Nvar*m+(Nvar-1)]));
 	}
+	*/
 
 	/*
 	dbl G = 0.;
