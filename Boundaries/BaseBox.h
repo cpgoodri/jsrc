@@ -75,8 +75,12 @@ private:
 
 	static std::map<string,CBox<Dim>*> BoxTypes; //!<Global map to reference box objects by name
 
+protected:
+	static const int STRING_SIZE = 128;
+	static const char STRING_DELIMITER = ':';
+
 public:
-	enum{RECTANGULAR, SYMMETRIC_QUADRILATERAL};
+	enum{RECTANGULAR, QUADRILATERAL};
 protected:
 	int BoxSymmetry; //!<Flag that potentially increases efficiency
 
@@ -87,10 +91,10 @@ private:
 	
 public:
 //constructors and copy operators
-	CBox(int symmetry=SYMMETRIC_QUADRILATERAL);						//!<Default constructor
-	CBox(const dmat &Trans, int symmetry=SYMMETRIC_QUADRILATERAL);	//!<Construct from transformation matrix
-	CBox(const CBox &box);											//!<Copy constructor
-	const CBox &operator=(const CBox &box);							//!<Copy operator
+	CBox(int symmetry=QUADRILATERAL);						//!<Default constructor
+	CBox(const dmat &Trans, int symmetry=QUADRILATERAL);	//!<Construct from transformation matrix
+	CBox(const CBox &box);									//!<Copy constructor
+	const CBox &operator=(const CBox &box);					//!<Copy operator
 
 
 	static CBox* SetFromStringAndMatrix(string str, dmat &trans);
@@ -125,6 +129,7 @@ public:
 	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const							= 0; //dvecBlock's are themselves references, so Point should NOT be passed as a reference.
 	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const	= 0;
 	virtual void MinimumDisplacement(const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointA,const Eigen::VectorBlock<Eigen::VectorXd,Dim> &PointB, dvec &Displacement) const = 0;
+	virtual void MinimumDisplacement(const Eigen::VectorXd &PointsA, const Eigen::VectorXd &PointsB, Eigen::VectorXd &Displacement) const = 0;
 
 	void GetMaxTransformedDistance(dvec &dist) const;
 
@@ -266,7 +271,7 @@ inline void CBox<Dim>::Transform(dvec &Point) const
 		case RECTANGULAR: 
 			Point = Transformation.diagonal().cwiseProduct(Point); 
 			break;
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			Point = Transformation * Point;	
 	}
@@ -281,7 +286,7 @@ inline void CBox<Dim>::Transform(Eigen::VectorXd &Points) const
 			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
 			break;
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Transformation*Points.segment<Dim>(Dim*i);
@@ -296,7 +301,7 @@ inline void CBox<Dim>::InverseTransform(dvec &Point) const
 		case RECTANGULAR: 
 			Point = Inverse_Transformation.diagonal().cwiseProduct(Point); 
 			break;
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			Point = Inverse_Transformation * Point;
 	}
@@ -311,7 +316,7 @@ inline void CBox<Dim>::InverseTransform(Eigen::VectorXd &Points) const
 			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Inverse_Transformation.diagonal().cwiseProduct(Points.segment<Dim>(Dim*i));
 			break;
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			for(int i = 0 ; i<Points.size()/Dim ; i++)
 				Points.segment<Dim>(Dim*i) = Inverse_Transformation*Points.segment<Dim>(Dim*i);
@@ -332,7 +337,7 @@ void CBox<Dim>::InverseTransformAndMove(Eigen::VectorXd &Points, const Eigen::Ve
 				MoveParticle(Points.segment<Dim>(Dim*i), Displacement);
 			}
 			break;
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			for(int i=0; i<np; ++i)
 			{
@@ -361,7 +366,7 @@ dbl CBox<Dim>::CalculateVolume() const
 	{
 		case RECTANGULAR: 
 			return Transformation.diagonal().prod();
-		case SYMMETRIC_QUADRILATERAL:
+		case QUADRILATERAL:
 		default:
 			return fabs(Transformation.determinant());
 	}

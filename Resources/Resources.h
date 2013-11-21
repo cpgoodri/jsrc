@@ -131,6 +131,14 @@ inline bool FileExists(std::string strFilename)
 	return(blnReturn);
 }
 
+void AssertThatFileExists(std::string strFilename)
+{
+	if(!FileExists(strFilename))
+	{
+		printf("WARNING: File %s not found.\n", strFilename.c_str());
+		assert(false);
+	}
+}
 
 
 

@@ -47,8 +47,8 @@ class CPeriodicBox : public CBox<Dim>
 
 public:
 //constructors and copy operators
-	CPeriodicBox();
-	CPeriodicBox(const dmat &Trans);
+	CPeriodicBox(int symmetry=CBox<Dim>::QUADRILATERAL);
+	CPeriodicBox(const dmat &Trans, int symmetry=CBox<Dim>::QUADRILATERAL);
 	CPeriodicBox(const CPeriodicBox &box);
 	
 	const CPeriodicBox<Dim,NonPeriodicDim> &operator=(const CPeriodicBox<Dim,NonPeriodicDim> &box);
@@ -67,6 +67,7 @@ public:
 	virtual void MoveParticle(dvecBlock Point, dvec const &Displacement) const;
 	virtual void MinimumDisplacement(const dvec &PointA, const dvec &PointB, dvec &Displacement) const;
 	virtual void MinimumDisplacement(const dvecBlock &PointA, const dvecBlock &PointB, dvec &Displacement) const;
+	virtual void MinimumDisplacement(const Eigen::VectorXd &PointsA, const Eigen::VectorXd &PointsB, Eigen::VectorXd &Displacement) const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -79,13 +80,13 @@ public:
 
 //constructors and copy operators
 template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox() 
-	: CBox<Dim>()
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(int symmetry) 
+	: CBox<Dim>(symmetry)
 {}
 
 template <int Dim, int NonPeriodicDim>
-CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const dmat &Trans) 
-	: CBox<Dim>(Trans)
+CPeriodicBox<Dim,NonPeriodicDim>::CPeriodicBox(const dmat &Trans, int symmetry) 
+	: CBox<Dim>(Trans,symmetry)
 {}
 
 template <int Dim, int NonPeriodicDim>
@@ -116,14 +117,14 @@ template <int Dim, int NonPeriodicDim>
 string CPeriodicBox<Dim,NonPeriodicDim>::DataToString() const
 {
 	stringstream ss;
-	ss << GetName() << ":" << CBox<Dim>::BoxSymmetry;
+	ss << GetName() << CBox<Dim>::STRING_DELIMITER << CBox<Dim>::BoxSymmetry;
 	return ss.str();
 }
 	
 template <int Dim, int NonPeriodicDim>
 void CPeriodicBox<Dim,NonPeriodicDim>::StringToData(string Data)
 {
-	vector<string> split = SplitString(Data,":");
+	vector<string> split = SplitString(Data,CBox<Dim>::STRING_DELIMITER);
 	CBox<Dim>::BoxSymmetry = atoi(split[1].c_str());
 }
 
@@ -212,6 +213,16 @@ inline void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const dvecBloc
 	for(int i = NonPeriodicDim ; i < Dim ; i++)
 		if(abs(Displacement(i))>0.5)
 			Displacement(i)-=sgn(Displacement(i));
+}
+
+template <int Dim, int NonPeriodicDim>
+inline void CPeriodicBox<Dim,NonPeriodicDim>::MinimumDisplacement(const Eigen::VectorXd &PointsA,const Eigen::VectorXd &PointsB, Eigen::VectorXd &Displacement) const
+{
+	Displacement = PointsA-PointsB;
+	for(int j = 0 ; j < PointsA.rows()/Dim ; j++)
+		for(int i = NonPeriodicDim ; i < Dim ; i++)
+			if(abs(Displacement(Dim*j+i))>0.5)
+				Displacement(Dim*j+i)-=sgn(Displacement(Dim*j+i));
 }
 
 template <int Dim, int NonPeriodicDim>

@@ -4,6 +4,7 @@
 #ifndef DONT_USE_NETCDF
 
 #include "Database.h"
+#include "../State/StaticState.h"
 
 
 namespace LiuJamming
@@ -28,23 +29,24 @@ private:
 	NcDim *recDim, *dimDim, *dm2Dim, *NPDim, *dofDim, *strDim;
 	NcVar *posVar, *radVar, *BoxMatrixVar, *BoxStringVar;//, *PotStringVar;
 
-	int Current;
-
-
 public:
 	CStaticDatabase(int np, string fn="temp.nc", NcFile::FileMode mode=NcFile::ReadOnly);
 
 private:
-	void SetDimVar();
-	void GetDimVar();
+	virtual void SetDimVar();
+	virtual void GetDimVar();
 
 public:
-	void SetCurrentRec(int r);
-	int  GetCurrentRec();
+	virtual int GetNumRecs() const;
 
-	void WriteState(STATE const &c, int rec=-1);
-	void ReadState(STATE &c, int rec);
-	void ReadNextState(STATE &c);
+	virtual void Write(STATE const &c, int rec=-1);
+
+	virtual void ReadFirst(STATE &c);
+	virtual void ReadLast(STATE &c);
+	virtual void Read(STATE &c, int rec);
+
+	//Read parts of a state
+	virtual void ReadBoxMatrix(Eigen::Matrix<dbl,Dim,Dim> &trans, int rec);
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -58,8 +60,7 @@ public:
 template <int Dim>
 CStaticDatabase<Dim>::CStaticDatabase(int np, string fn, NcFile::FileMode mode)
 	: CDatabase(fn,mode),
-	  NP(np),
-	  Current(0)
+	  NP(np)
 {
 	switch(Mode)
 	{
@@ -117,20 +118,13 @@ void CStaticDatabase<Dim>::GetDimVar()
 	BoxStringVar	= File.get_var("BoxString");
 }
 
-
 template <int Dim>
-void CStaticDatabase<Dim>::SetCurrentRec(int r)
+int CStaticDatabase<Dim>::GetNumRecs() const
 {
-	Current = r;
+	return (int)recDim->size();
 }
 
-template <int Dim>
-int CStaticDatabase<Dim>::GetCurrentRec()
-{
-	return Current;
-}
-
-void CopyString(char *cstr, string &str, int max_size, char background)
+static void CopyString(char *cstr, string &str, int max_size, char background)
 {
 	int i;
 	for(i=0; i<str.size()&&i<max_size; ++i)
@@ -140,7 +134,7 @@ void CopyString(char *cstr, string &str, int max_size, char background)
 }
 
 template <int Dim>
-void CStaticDatabase<Dim>::WriteState(STATE const &s, int rec)
+void CStaticDatabase<Dim>::Write(STATE const &s, int rec)
 {
 	assert(Mode==NcFile::Replace||Mode==NcFile::Write||Mode==NcFile::New);
 	assert(s.GetParticleNumber() == NP);
@@ -164,10 +158,27 @@ void CStaticDatabase<Dim>::WriteState(STATE const &s, int rec)
 	BoxMatrixVar->put_rec(trans.data(),		rec);
 	BoxStringVar->put_rec(&BoxCString[0],	rec);
 	s.GetPotential()->NetCDFWrite(File, rec);
+
+	File.sync();
+}
+
+
+template <int Dim>
+void CStaticDatabase<Dim>::ReadFirst(STATE &s)
+{
+	int rec = 0;
+	Read(s, rec);
 }
 
 template <int Dim>
-void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
+void CStaticDatabase<Dim>::ReadLast(STATE &s)
+{
+	int rec = recDim->size()-1;
+	Read(s, rec);
+}
+
+template <int Dim>
+void CStaticDatabase<Dim>::Read(STATE &s, int rec)
 {
 	assert(Mode==NcFile::ReadOnly);
 	assert(s.GetParticleNumber() == NP);
@@ -177,7 +188,6 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 	
 	Eigen::Matrix<dbl,Dim,Dim> trans;
 	char BoxCString[DB_STRING_SIZE];
-	//char PotCString[DB_STRING_SIZE];
 
 	//Read the data from the database
 	posVar			-> set_cur(rec);
@@ -192,14 +202,20 @@ void CStaticDatabase<Dim>::ReadState(STATE &s, int rec)
 
 	//Set the box
 	s.Box = CBox<Dim>::SetFromStringAndMatrix(BoxCString,trans);
+	s.Box->SetSymmetry(CBox<Dim>::QUADRILATERAL); //This sometimes isn't taken care of by the constructors... not sure why...
+//	printf("111: %i\n", s.Box->GetSymmetry());
 
 	//Set the potential
 	s.Potential = CPotential::NetCDFRead(File, rec);
-	//s.Potential = CPotential::SetFromString(PotCString);
 }
 
-
-
+template <int Dim>
+void CStaticDatabase<Dim>::ReadBoxMatrix(Eigen::Matrix<dbl,Dim,Dim> &trans, int rec)
+{
+	assert(Mode==NcFile::ReadOnly);
+	BoxMatrixVar	-> set_cur(rec);
+	BoxMatrixVar	->get(trans.data(),		1, dm2Dim->size());
+}
 
 }
 

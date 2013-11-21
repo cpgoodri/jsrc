@@ -22,13 +22,11 @@
  *	The recursive function findroot(int i) returns the index of the root of the cluster that includes node i. It also performs path compression
  *	for highly efficient code.
  *
- *
- *
  */
 
-template <int Dim>
 class CClusterizer
 {
+	//! This class isn't really necessary since it just stores an int. However, future implementations may include a Dim dimensional vector pointing from the node to the parent. This also makes sure ptr is initialized to -1.
 	class pointer
 	{
 		public:
@@ -38,16 +36,16 @@ class CClusterizer
 	const int EMPTY;
 
 public:
-	const int N;
+	const int N;	//!<Total number of nodes.
 	
 	//Data
-	std::vector< std::vector<int> > nn;
-	pointer *PTR;
+	std::vector< std::vector<int> > nn;	//!<Neighbor list
+	pointer *PTR;						//!<Array of pointers to store the cluster information
 
 	//Constructor/destructor
-	CClusterizer(int n);
-	CClusterizer(int n, std::vector< std::vector<int> > const &nbrs);
-	CClusterizer(int n, std::vector< std::vector<int> > const &nbrs, std::vector<bool> const &include);
+	CClusterizer(int n);																					//!<Simple constructor
+	CClusterizer(int n, std::vector< std::vector<int> > const &nbrs);										//!<Construct and set the neighbor list
+	CClusterizer(int n, std::vector< std::vector<int> > const &nbrs, std::vector<bool> const &include);		//!<Construct, set the neighbor list, and run the decomposition
 	~CClusterizer();
 
 	void set_nn(std::vector< std::vector<int> > const &nbrs);
@@ -66,23 +64,20 @@ public:
 	int  GetNumClusters();											//!<Return the number of distinct clusters. DecomposeCluster() must be called prior to this.
 };
 
-template <int Dim>
-CClusterizer<Dim>::CClusterizer(int n)
+CClusterizer::CClusterizer(int n)
 	:N(n), EMPTY(-n-1)
 {
 	PTR = new pointer[N];
 };
 
-template <int Dim>
-CClusterizer<Dim>::CClusterizer(int n, std::vector< std::vector<int> > const &nbrs)
+CClusterizer::CClusterizer(int n, std::vector< std::vector<int> > const &nbrs)
 	:N(n), EMPTY(-n-1)
 {
 	PTR = new pointer[N];
 	set_nn(nbrs);
 };
 
-template <int Dim>
-CClusterizer<Dim>::CClusterizer(int n, std::vector< std::vector<int> > const &nbrs, std::vector<bool> const &include)
+CClusterizer::CClusterizer(int n, std::vector< std::vector<int> > const &nbrs, std::vector<bool> const &include)
 	:N(n), EMPTY(-n-1)
 {
 	PTR = new pointer[N];
@@ -90,20 +85,17 @@ CClusterizer<Dim>::CClusterizer(int n, std::vector< std::vector<int> > const &nb
 	DecomposeClusters(include);
 };
 
-template <int Dim>
-CClusterizer<Dim>::~CClusterizer()
+CClusterizer::~CClusterizer()
 {
 	delete[] PTR;
 }
 
-template <int Dim>
-void CClusterizer<Dim>::set_nn(std::vector< std::vector<int> > const &nbrs)
+void CClusterizer::set_nn(std::vector< std::vector<int> > const &nbrs)
 {
 	nn = nbrs;
 };
 
-template <int Dim>
-inline int CClusterizer<Dim>::findroot(int i)
+inline int CClusterizer::findroot(int i)
 {
 	if (PTR[i].ptr<0) return i;
 	int parent = PTR[i].ptr;
@@ -112,8 +104,7 @@ inline int CClusterizer<Dim>::findroot(int i)
 };
 
 //Combine two clusters
-template <int Dim>
-void CClusterizer<Dim>::amalgamate_clusters(int rbig, int rsmall, int sbig, int ssmall)
+void CClusterizer::amalgamate_clusters(int rbig, int rsmall, int sbig, int ssmall)
 {
 	//assertions
 	assert(PTR[rbig].ptr < 0);		//rbig is a root
@@ -129,15 +120,13 @@ void CClusterizer<Dim>::amalgamate_clusters(int rbig, int rsmall, int sbig, int 
 	PTR[rsmall].ptr = rbig;
 }
 
-template <int Dim>
-void CClusterizer<Dim>::DecomposeClusters()
+void CClusterizer::DecomposeClusters()
 {
 	std::vector<bool> include(N, true);
 	DecomposeClusters(include);
 }
 
-template <int Dim>
-void CClusterizer<Dim>::DecomposeClusters(std::vector<bool> const &include)
+void CClusterizer::DecomposeClusters(std::vector<bool> const &include)
 {
 	assert((int)include.size() == N);
 
@@ -177,8 +166,7 @@ void CClusterizer<Dim>::DecomposeClusters(std::vector<bool> const &include)
 	}
 }
 
-template <int Dim>
-void CClusterizer<Dim>::GetLargestCluster(std::vector<int> &cluster)
+void CClusterizer::GetLargestCluster(std::vector<int> &cluster)
 {
 	int size = 0;
 	int lc_root = -1;
@@ -200,8 +188,7 @@ void CClusterizer<Dim>::GetLargestCluster(std::vector<int> &cluster)
 	assert((int)cluster.size() == size);
 }
 	
-template <int Dim>
-void CClusterizer<Dim>::GetClusters(std::vector< std::vector<int> > &clusters)
+void CClusterizer::GetClusters(std::vector< std::vector<int> > &clusters)
 {
 	clusters.clear();
 
@@ -229,8 +216,7 @@ void CClusterizer<Dim>::GetClusters(std::vector< std::vector<int> > &clusters)
 		}
 }
 
-template <int Dim>
-int CClusterizer<Dim>::GetNumClusters()
+int CClusterizer::GetNumClusters()
 {
 	int num_roots = 0;
 	for(int i=0; i<N; ++i)

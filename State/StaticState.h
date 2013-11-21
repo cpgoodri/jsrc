@@ -76,6 +76,7 @@ class CStaticState
 private:
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
+	typedef Eigen::Matrix<int,Dim,1> ivec;
 
 	int N;							//!<Number of particles
 	Eigen::VectorXd Positions;		//!<dN vector of positions (in normalized coordinates)
@@ -95,6 +96,7 @@ public:
 	CStaticState(int _N);												//!<Primary constructor
 	CStaticState(CStaticState const &copy);								//!<Copy constructor
 	CStaticState(CStaticState const &copy, index_map const &IncludeMap);//!<Copy only the particles indicated in IncludeMap
+	CStaticState(CStaticState const &copy, ivec copies_per_side);	//!<Construce the CStaticState from multiple copies of copy.
 	CStaticState<Dim> &operator=(CStaticState<Dim> const &copy);		//!<Copy operator
 	~CStaticState();													//!<Destructor
 
@@ -267,6 +269,85 @@ CStaticState<Dim>::CStaticState(CStaticState const &copy, index_map const &Inclu
 		copy.GetParticlePositionVirtual(ptemp, IncludeMap[im]);
 		SetParticlePositionVirtual(ptemp, im);
 		SetRadius(im, copy.GetRadius(IncludeMap[im]));
+	}
+}
+	
+template<int Dim>
+static void calculate_offset(int c, Eigen::Matrix<int,Dim,1> copies_per_side, Eigen::Matrix<dbl,Dim,1> &offset)
+{
+	Eigen::Matrix<int,2,1> cell = Eigen::Matrix<int,2,1>::Zero();
+	for(int i=0; i<c; ++i)
+	{
+		++cell[0];
+		for(int dd=0; dd<Dim; ++dd)
+		{
+			if(cell[dd] >= copies_per_side[dd])
+			{
+				assert( cell[dd]==copies_per_side[dd] );
+				assert( dd < Dim-1 );
+				cell[dd] -= copies_per_side[dd];
+				++cell[dd+1];
+			}
+		}
+	}
+	for(int dd=0; dd<Dim; ++dd)
+		offset[dd] = ((dbl)cell[dd])/((dbl)copies_per_side[dd]);
+}
+
+template<int Dim>	
+CStaticState<Dim>::CStaticState(CStaticState const &copy, ivec copies_per_side)
+	: N(0),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	int Ncopies = 1;
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		assert(copies_per_side[dd]>0);
+		Ncopies *= copies_per_side[dd];
+	}
+
+	if(Box!=NULL)		delete Box;
+	if(Potential!=NULL)	delete Potential;
+	
+	Box			= copy.GetBox()->Clone();		//Clone() gives a deep copy
+	Potential	= copy.GetPotential()->Clone();	//Clone() gives a deep copy
+
+	//Adjust the size of the box.
+	dmat Trans, Trans_new;
+	Box->GetTransformation(Trans);
+	dvec cps_dbl;
+	for(int dd=0; dd<Dim; ++dd)	cps_dbl[dd] = (dbl)copies_per_side[dd];
+	Trans_new = Trans * (cps_dbl.asDiagonal());
+	Box->SetTransformation(Trans_new);
+
+	int Nsmall = copy.GetParticleNumber();
+	N = Ncopies*Nsmall;
+	Positions = Eigen::VectorXd::Zero(Dim*N);
+	Radii = Eigen::VectorXd::Zero(N);
+
+	Eigen::VectorXd ptemp;
+	copy.GetPositionsVirtual(ptemp);
+	assert(ptemp.size()*Ncopies == Positions.size());
+
+	//divide ptemp by copies_per_cell
+	int ii, dd;
+	for(ii=0; ii<Nsmall; ++ii)
+		for(dd=0; dd<Dim; ++dd)
+			ptemp[Dim*ii+dd] /= ((dbl)copies_per_side[dd]);
+
+	dvec offset;
+	int start;
+	for(int c=0; c<Ncopies; ++c)
+	{
+		calculate_offset(c, copies_per_side, offset);
+		start = Nsmall*c;
+		for(ii=0; ii<Nsmall; ++ii)
+		{
+			for(dd=0; dd<Dim; ++dd)
+				Positions[Dim*(start+ii) + dd] = ptemp[Dim*ii+dd]+offset[dd];
+			SetRadius(start+ii, copy.GetRadius(ii));
+		}
 	}
 }
 
@@ -604,7 +685,7 @@ void CStaticState<Dim>::SetRadiiPolyUniform(dbl SizeRatio)
 	dbl RelSize;
 	for(int i=0; i<N; ++i)
 	{
-		RelSize = ((dbl)1.) + (((dbl)i)/((dbl)(N-1)))*SizeRatio;
+		RelSize = ((dbl)1.) + (((dbl)i)/((dbl)(N-1)))*(SizeRatio-1.);
 		Radii[i] = RelSize;
 	}
 	dbl avgD = 2.*Radii.mean();

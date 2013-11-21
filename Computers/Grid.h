@@ -67,9 +67,12 @@ namespace LiuJamming
 template <int Dim>
 class CGrid
 {
+	typedef Eigen::Matrix<int,Dim,1> ivec;
 	typedef Eigen::Matrix<dbl,Dim,1> dvec;
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 public:
+
+	enum{UDLM_AssumeCubic, UDLM_General};
 
 	//!iterator class to allow the user to iterate over potential neighbors.
 	class iterator {
@@ -152,6 +155,7 @@ private:
 	//Flags
 	bool ReallocationNecessary;		//!<A boolean to indicate whether we have to reallocate the grid.
 	bool DualListUpdateNecessary;	//!<A boolean to indicate whether the DualList might have changed.
+	int  UpdateDualListMethod;		//!<A flag to indicate which method to use to update the dual list
 	
 public:
 //! @name Constructors and operators
@@ -173,6 +177,8 @@ public:
 	void Allocate();		//!<Allocate memory for the grid.
 	void Construct();		//!<Place particles in the grid.
 	void UpdateDualList();	//!<Update the list of cell connections.
+	void UpdateDualList_AssumeCubic();
+	void UpdateDualList_General();
 
 ///@}
 
@@ -185,7 +191,9 @@ public:
 //! @name Misc.
 ///@{
  	void CellToCoordinates(int i, dvec &coordinates);	//!<Convert a cell index into a dvec of cell coordinates.
-	int CoordinatesToCell(const dvec &coordinates);		//!<Convert a dvec of cell coordinates into a cell index.
+	int  CoordinatesToCell(const dvec &coordinates);		//!<Convert a dvec of cell coordinates into a cell index.
+	void CellToCellxyz(int i, ivec &cellxyz);			//!<Convert a cell index to a ivec of cell cartisian indices
+	int  CellxyzToCell(const ivec &cellxyz);				//!<Convert a ivec of cartisian indices to a cell index
 	dvec ComputeCellSize();								//!<Function to compute the grid cell size.
 	void PrintGrid() const;								//!<Print the grid to stdout.
 
@@ -208,21 +216,9 @@ CGrid<Dim>::CGrid(CStaticState<Dim> *s) : State(s), N(0), OccupancyList(NULL), C
 	ClearLists();
 	SetN(State->GetParticleNumber());
 	for(int i=0; i<N; ++i) OccupancyList[i] = -1;
-//	CellList = NULL;
-//	DualList = NULL;
+	UpdateDualListMethod = UDLM_AssumeCubic;
+	//UpdateDualListMethod = UDLM_General;
 }
-
-/*
-template <int Dim>
-CGrid<Dim>::CGrid(const CGrid &copy) : State(copy.State), N(0)
-{
-	ClearLists();
-	SetN(State->GetParticleNumber());
-	for(int i=0; i<N; ++i) OccupancyList[i] = -1;
-//	CellList = NULL;
-//	DualList = NULL;
-}
-*/
 
 template <int Dim>
 CGrid<Dim>::~CGrid()
@@ -244,8 +240,7 @@ const CGrid<Dim> &CGrid<Dim>::operator=(const CGrid<Dim> &copy)
 		State = copy.State;
 		SetN(State->GetParticleNumber());
 		for(int i=0; i<N; ++i) OccupancyList[i] = -1;
-//		CellList = NULL;
-//		DualList = NULL;
+		UpdateDualListMethod = copy.UpdateDualListMethod;
 	}
 	return *this;
 }
@@ -329,10 +324,6 @@ void CGrid<Dim>::Construct()
 	if(ReallocationNecessary)
 		Allocate();
 
-	//This will be taken care of later
-//	for(int i = 0 ; i<N ; i++)
-//		OccupancyList[i] = -1;
-
 	//reset CellList
 	for(int i = 0 ; i< TotalCells ;i++)
 		CellList[i] = -1;  //This is necessary because a cell might not have any particles in it.
@@ -362,47 +353,73 @@ void CGrid<Dim>::Construct()
 	//Now construct the dual list
 	if(DualListUpdateNecessary)
 		UpdateDualList();
-	/*
-	//go through each pair of cells and find their coordinates
-	dvec Displacement;
-	for(int i = 0 ; i < TotalCells ; i++)
-	{
-		dvec CoordinateI;
-		CellToCoordinates(i,CoordinateI);
-		for(int j = i ; j < TotalCells ; j++)
-		{
-			dvec CoordinateJ;
-			CellToCoordinates(j,CoordinateJ);
-			
-			State->GetBox()->MinimumDisplacement(CoordinateI,CoordinateJ,Displacement);
-			
-			//go through the dimensions and if any dimension is closer than CellSize+\epsilon apart
-			//add the cells to each others dual
-			bool add = true;
-			for(int k = 0 ; k < Dim ; k++)
-				if(abs(Displacement(k))>CellSize(k)+CellSize(k)/100.0)	
-					add = false;
-	
-			if(add)
-			{
-				//cout << "Displacement = " << max_displacement << " : CellSize = " << CellSize(0) << endl;
-				DualList[i].push_back(j);
-				if(j!=i)
-					DualList[j].push_back(i);
-			}
-		}
-	}
-	*/
 }
 
 template<int Dim>
 void CGrid<Dim>::UpdateDualList()
 {
+	switch(UpdateDualListMethod)
+	{
+		case UDLM_AssumeCubic:	
+			printf("Updating the dual list with the new method\n");
+			UpdateDualList_AssumeCubic(); 
+			break;
+		case UDLM_General:
+			printf("Updating the dual list with the general method\n");
+			UpdateDualList_General(); 
+			break;
+	}
+}
+
+template<int Dim>
+void CGrid<Dim>::UpdateDualList_AssumeCubic()
+{
 	//reset the lists
 	for(int i = 0 ; i< TotalCells ;i++)
-	{
 		DualList[i].erase(DualList[i].begin(),DualList[i].end());
+
+	//check that there are enough cells
+	vector<int> PeriodicDims;
+	State->GetBox()->GetPeriodicDimensions(PeriodicDims);
+	for(typename vector<int>::iterator it=PeriodicDims.begin(); it!=PeriodicDims.end(); ++it)
+		assert(N_Cells[(*it)] >= 3); //this makes sure that you can never touch multiple images of the same particle
+
+	int NCellNbrs = 1;
+	for(int dd=0; dd<Dim; ++dd)
+		NCellNbrs *= 3;
+
+	ivec cellxyz, cellxyz_nbr, dcellxyz;
+	int c_nbr;
+	for(int c=0; c<TotalCells; ++c)
+	{
+		CellToCellxyz(c,cellxyz);
+		dcellxyz = ivec::Constant(-1);
+		for(int nni=0; nni<NCellNbrs; ++nni)
+		{
+			for(int dd=0; dd<Dim-1; ++dd)
+				if(dcellxyz[dd]==2)
+				{
+					dcellxyz[dd] = -1;
+					++dcellxyz[dd+1];
+				}
+			cellxyz_nbr = cellxyz + dcellxyz;
+
+			c_nbr = CellxyzToCell(cellxyz_nbr); //cellxyz_nbr does not have to be in bounds;
+			
+			DualList[c].push_back(c_nbr);
+
+			++dcellxyz[0];
+		}
 	}
+	DualListUpdateNecessary = false;
+}
+
+template<int Dim>
+void CGrid<Dim>::UpdateDualList_General()
+{
+	//reset the lists
+	for(int i = 0 ; i< TotalCells ;i++)
+		DualList[i].erase(DualList[i].begin(),DualList[i].end());
 
 	//check that there are enough cells
 	vector<int> PeriodicDims;
@@ -476,6 +493,47 @@ int CGrid<Dim>::CoordinatesToCell(const dvec &coordinates)
 	
 	return Cell_Index;
 }
+
+static int PutInBounds(int i, int a)
+{
+	if(i>=a)	return i - (i/a)*a;
+	if(i<0)		return i - (i/a-1)*a;
+	return i;
+}
+
+template <int Dim>
+int CGrid<Dim>::CellxyzToCell(const ivec &cellxyz_in)
+{
+	//First, make sure cellxyz is in bounds
+	ivec cellxyz;
+	for(int dd=0; dd<Dim; ++dd)
+		cellxyz[dd] = PutInBounds(cellxyz_in[dd], N_Cells[dd]);
+	
+	int multiplier = 1;
+	int icell = 0;
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		icell += multiplier*cellxyz[dd];
+		multiplier *= N_Cells[dd];
+	}
+	return icell;
+//return cellxyz[0] + cl.ncellsxyz*cellxyz[1];	
+}
+
+template <int Dim>
+void CGrid<Dim>::CellToCellxyz(int i, ivec &cellxyz)
+{
+	int multiplier = TotalCells;
+	int itemp = i;
+	for(int dd=Dim-1; dd>=0; --dd)
+	{
+		multiplier /= N_Cells[dd];
+		cellxyz[dd] = itemp / multiplier;
+		itemp = itemp % multiplier;
+	}
+	assert(multiplier==1);
+}
+
 
 /*
 template <int Dim>

@@ -141,7 +141,7 @@ Eigen::VectorXd UmfpackInterface::solve(Eigen::VectorXd const &B)
 		case UMFPACK_ERROR_invalid_Numeric_object:	printf("Error: invalid Numeric object\n"); break;
 		default:									printf("Unknown Error.\n"); break;
 	}
-	if(verbose_invert)								printf("\tComputation use %e FLOPS\n", Info[UMFPACK_SOLVE_FLOPS]);
+	if(verbose_invert)								printf("\tComputation used %e FLOPS\n", Info[UMFPACK_SOLVE_FLOPS]);
 
 
 	return X;

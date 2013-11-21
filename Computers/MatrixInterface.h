@@ -257,7 +257,6 @@ public:
 
 //	void save_matrix_nc(char *filename);
 //	void load_matrix_nc(char *filename);
-
 };
 
 template<typename T>
