@@ -131,7 +131,7 @@ inline bool FileExists(std::string strFilename)
 	return(blnReturn);
 }
 
-void AssertThatFileExists(std::string strFilename)
+static void AssertThatFileExists(std::string strFilename)
 {
 	if(!FileExists(strFilename))
 	{
