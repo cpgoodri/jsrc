@@ -28,9 +28,9 @@ private:
 
 public:
 	//!Constructor
-	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type=NONE, dbl tol=1e-12, int max_iterations=-1, int print_iter=1000);
+	CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type=NONE, dbl tol=1e-12, int max_iterations=-1, int print_iter=1000, bool silent=false);
 	//!Simple minimization with the FIRE algorithm
-	void minimizeFIRE(dbl tol=1e-12, int max_iterations = -1, dbl delta_t_start=-1., int print_iter=1000);
+	void minimizeFIRE(dbl tol=1e-12, int max_iterations = -1, dbl delta_t_start=-1., int print_iter=1000, bool silent=false);
 };
 
 /**
@@ -44,7 +44,7 @@ public:
  *	@param[in] max_iterations Maximum number of iterations. Unlimited if less than or equal to zero. default = -1.
  */
 template<int Dim>
-CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type, dbl tol, int max_iterations, int print_iter)
+CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int minimize_type, dbl tol, int max_iterations, int print_iter, bool silent)
 	: pComputer(&TargetComputer)
 {
 	N_dof = pComputer->GetNdof();
@@ -54,7 +54,7 @@ CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int 
 			break;
 		case FAST:
 		case FIRE:
-			minimizeFIRE(tol, max_iterations,-1,print_iter);
+			minimizeFIRE(tol, max_iterations,-1,print_iter,silent);
 			break;
 	}
 };
@@ -67,12 +67,15 @@ CSimpleMinimizer<Dim>::CSimpleMinimizer(CBaseComputer<Dim> &TargetComputer, int 
  *	@param[in] delta_t_start initial MD time step. Set automatically from the Computer if less than or equal to zero. default = -1.
  */
 template<int Dim>
-void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, int max_iterations, dbl delta_t_start, int print_iter)
+void CSimpleMinimizer<Dim>::minimizeFIRE(dbl tol, int max_iterations, dbl delta_t_start, int print_iter, bool silent)
 {
 	typedef CMinimizerFIRE< CBaseComputer<Dim> > MINIMIZER;
 	MINIMIZER mm(N_dof);
 
-	mm.set_functions(pComputer, &CBaseComputer<Dim>::Evaluate, &CBaseComputer<Dim>::Progress, &CBaseComputer<Dim>::Move, &CBaseComputer<Dim>::ReportHeader);
+	if(silent)
+		mm.set_functions(pComputer, &CBaseComputer<Dim>::Evaluate, &CBaseComputer<Dim>::ProgressSilent, &CBaseComputer<Dim>::Move);
+	else
+		mm.set_functions(pComputer, &CBaseComputer<Dim>::Evaluate, &CBaseComputer<Dim>::Progress, &CBaseComputer<Dim>::Move, &CBaseComputer<Dim>::ReportHeader);
 
 	if(max_iterations > 0)
 		mm.set_max_iterations(max_iterations);

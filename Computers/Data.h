@@ -80,6 +80,13 @@ public:
 		}
 		printf("----------------------------------------------------------------\n\n");
 	}
+
+	void PrintLine(FILE *outfile)
+	{
+		//Data: NPp, Nc, NcmNciso, Z, DeltaZ, Volume, Energy, Pressure, MaxGrad, G, B
+		//        1   2         3  4       5       6       7         8        9 10 11
+		fprintf(outfile, "%i, %i, %i, %e, %e, %e, %e, %e, %e, %e, %e,\n", NPp, Nc, NcmNciso(), Z(), deltaZ(), Volume, Energy, Pressure, MaxGrad, cijkl.CalculateShearModulus(), cijkl.CalculateBulkModulus());
+	}
 };
 
 }

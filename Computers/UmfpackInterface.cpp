@@ -40,7 +40,7 @@ void UmfpackInterface::init()
 
 void UmfpackInterface::set_default_options()
 {
-	verbose_invert = 1;
+	verbose_invert = 0;
 }
 
 

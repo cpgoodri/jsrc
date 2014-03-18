@@ -106,6 +106,7 @@ public:
 ///@{
 	virtual void Evaluate(Eigen::VectorXd &grad, dbl &fx) = 0;
 	virtual bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol) = 0;
+	virtual bool ProgressSilent(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol) = 0;
 	virtual void Move(Eigen::VectorXd const &step) = 0;
 	virtual void ReportHeader()
 	{

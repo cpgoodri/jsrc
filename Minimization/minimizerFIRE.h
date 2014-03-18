@@ -149,7 +149,8 @@ public:
 #define min2(a, b)      ((a) <= (b) ? (a) : (b))
 	int minimize()
 	{
-		printf("begin FIRE minimization with tol = %e\n", PARAM_convergence_tol);
+		if(!IPARAM_do_not_use_report_header)
+			printf("begin FIRE minimization with tol = %e\n", PARAM_convergence_tol);
 		int ii;	//Iteration step
 		int i;	//iterator for various for loops.
 		int ret;

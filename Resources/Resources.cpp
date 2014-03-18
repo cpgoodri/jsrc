@@ -134,7 +134,8 @@ vector<string> SplitString(const string &target, const string &token)
 	{
 		if(target.compare(i,1,token)==0)
 		{
-			if(current.length()>0){
+			if(current.length()>0)
+			{
 				split.push_back(current);
 				current = "";
 			}

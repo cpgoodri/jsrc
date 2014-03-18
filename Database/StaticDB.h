@@ -39,11 +39,11 @@ private:
 public:
 	virtual int GetNumRecs() const;
 
-	virtual void Write(STATE const &c, int rec=-1);
+	virtual void Write(STATE const &s, int rec=-1);
 
-	virtual void ReadFirst(STATE &c);
-	virtual void ReadLast(STATE &c);
-	virtual void Read(STATE &c, int rec);
+	virtual void ReadFirst(STATE &s);
+	virtual void ReadLast(STATE &s);
+	virtual void Read(STATE &s, int rec);
 
 	//Read parts of a state
 	virtual void ReadBoxMatrix(Eigen::Matrix<dbl,Dim,Dim> &trans, int rec);

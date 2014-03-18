@@ -47,9 +47,18 @@ using std::ostream;
 using std::istream;
 
 
-
 typedef double dbl;
 typedef std::complex<dbl> cdbl;
+
+
+
+#define LOGM_0()        {printf("DEBUGGING:         FILE %s,  LINE %d\n", __FILE__, __LINE__); fflush(stdout);}
+#define LOGM_1(index)   {printf("DEBUGGING (%03i):   FILE %s,  LINE %d\n", index, __FILE__, __LINE__); fflush(stdout);}
+#define LOGM_X(x,A,FUNC,...) FUNC
+#define LOGM(...) LOGM_X(,##__VA_ARGS__,LOGM_1(__VA_ARGS__),LOGM_0(__VA_ARGS__))
+
+
+
 
 
 

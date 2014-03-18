@@ -124,6 +124,7 @@ public:
 
 	void Evaluate(Eigen::VectorXd &grad, dbl &fx);
 	bool Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol);
+	bool ProgressSilent(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol);
 	void Move(Eigen::VectorXd const &step);
 	dbl GetMinimizationTimeScale() const;
     
@@ -392,7 +393,6 @@ void CStaticComputer<Dim>::Evaluate(Eigen::VectorXd &grad, dbl &fx)
 template <int Dim>
 bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol) 
 {
-//	const int print_iter = 1000;
 	dbl gradNorm = grad.norm();
 	dbl max_grad = max_abs_element(grad.size(), grad.data());
 	bool converged = (max_grad < tol)?true:false;
@@ -405,6 +405,15 @@ bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int ite
 			fflush(stdout);
 		}
 	}
+	return converged;
+};
+
+template <int Dim>
+bool CStaticComputer<Dim>::ProgressSilent(Eigen::VectorXd const &grad, dbl fx, int iteration, int print_iter, dbl tol) 
+{
+	dbl gradNorm = grad.norm();
+	dbl max_grad = max_abs_element(grad.size(), grad.data());
+	bool converged = (max_grad < tol)?true:false;
 	return converged;
 };
 

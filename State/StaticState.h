@@ -819,9 +819,10 @@ void CStaticState<Dim>::SetParticlePosition(const Eigen::Matrix<dbl,Dim,1> &t_Po
 {
 	if(i<0||i>N)
 		throw(CException("CStaticState<Dim>::SetParticlePosition","Attempting to set the position of a particle that does not exist."));
-		
-	Box->InverseTransform(t_Positions);
-	Positions.segment<Dim>(Dim*i) = t_Positions;
+	
+	Eigen::Matrix<dbl,Dim,1> tpos = t_Positions;
+	Box->InverseTransform(tpos);
+	Positions.segment<Dim>(Dim*i) = tpos;
 }
 
 template <int Dim>

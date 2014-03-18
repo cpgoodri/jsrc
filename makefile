@@ -1,5 +1,5 @@
 #DIR = /data0/home/cpgoodri/jcode/ssdirectional/jsrc
-DIR = /home/cpgoodri/projects/ssdirectional/jsrc
+DIR = /home/cpgoodri/jsrc
 
 name=test3
 obj=$(name).o

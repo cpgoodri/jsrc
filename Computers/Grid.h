@@ -72,7 +72,7 @@ class CGrid
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 public:
 
-	enum{UDLM_AssumeCubic, UDLM_General};
+	enum{UDLM_AssumeCubic, UDLM_General}; //UDLM stands for "UpdateDualListMethod", i.e. the method used to update the dual list.
 
 	//!iterator class to allow the user to iterate over potential neighbors.
 	class iterator {
@@ -361,11 +361,11 @@ void CGrid<Dim>::UpdateDualList()
 	switch(UpdateDualListMethod)
 	{
 		case UDLM_AssumeCubic:	
-			printf("Updating the dual list with the new method\n");
+//			printf("Updating the dual list with the new method\n");
 			UpdateDualList_AssumeCubic(); 
 			break;
 		case UDLM_General:
-			printf("Updating the dual list with the general method\n");
+//			printf("Updating the dual list with the general method\n");
 			UpdateDualList_General(); 
 			break;
 	}

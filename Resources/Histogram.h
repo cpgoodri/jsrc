@@ -50,11 +50,11 @@ template <typename T, typename U>
 U Histogram<T,U>::mean(typename vector<T>::const_iterator first, typename vector<T>::const_iterator last)
 {
 	U m = (U)(*first);
-	int Ndata = 1;
+	int ndata = 1;
 	while(++first!=last)
 	{   
-		++Ndata;
-		m += ( ((U)(*first))-m )/((U)Ndata);
+		++ndata;
+		m += ( ((U)(*first))-m )/((U)ndata);
 	}   
 	return m;
 }

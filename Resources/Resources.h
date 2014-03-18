@@ -144,6 +144,33 @@ static void AssertThatFileExists(std::string strFilename)
 
 
 
+//Calculate the participation ratio of a vector of length Nvar
+template <int Dim>
+dbl CalculateParticipationRatio(int Nvar, dbl *vec)
+{
+	int n = Nvar/Dim;
+	assert(Nvar == n*Dim);
+
+	dbl num, denom, pmag2;
+	num = denom = 0.; 
+
+	for(int im=0; im<n; ++im)
+	{   
+		pmag2 = 0.; 
+		for(int dd=0; dd<Dim; ++dd)
+			pmag2 += POW2(vec[Dim*im+dd]);
+
+		num += pmag2;
+		denom += pmag2*pmag2;
+	}   
+	return num*num/(((dbl)n)*denom);
+}
+
+
+
+
+
+
 
 
 

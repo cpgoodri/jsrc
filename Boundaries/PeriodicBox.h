@@ -124,7 +124,8 @@ string CPeriodicBox<Dim,NonPeriodicDim>::DataToString() const
 template <int Dim, int NonPeriodicDim>
 void CPeriodicBox<Dim,NonPeriodicDim>::StringToData(string Data)
 {
-	vector<string> split = SplitString(Data,CBox<Dim>::STRING_DELIMITER);
+	//vector<string> split = SplitString(Data,CBox<Dim>::STRING_DELIMITER);
+	vector<string> split = SplitString(Data,":");
 	CBox<Dim>::BoxSymmetry = atoi(split[1].c_str());
 }
 
