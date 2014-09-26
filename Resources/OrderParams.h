@@ -14,7 +14,7 @@ namespace LiuJamming
 template <int Dim> class CBondList;
 
 template <int Dim>
-class LocalOrder
+class CLocalOrder
 {
 	typedef vector< vector< std::pair<int,int> > > NBR_LIST;
 
@@ -33,7 +33,7 @@ public:
 	vector< dbl> fi;
 
 
-	LocalOrder(CBondList<Dim> const &_bonds, int _l=6);
+	CLocalOrder(CBondList<Dim> const &_bonds, int _l=6);
 private:
 	void init();
 
@@ -48,18 +48,18 @@ static int set_num_m(int Dim, int _l)
 {
 	if(Dim==2) return 1;
 	if(Dim==3) return 2*_l+1;
-	throw( CException("set_num_m","Cannot construct a LocalOrder object for the requested dimension.") );
+	throw( CException("set_num_m","Cannot construct a CLocalOrder object for the requested dimension.") );
 	return 0;
 }
 
-template <int Dim> LocalOrder<Dim>::LocalOrder(CBondList<Dim> const &_bonds, int _l)
+template <int Dim> CLocalOrder<Dim>::CLocalOrder(CBondList<Dim> const &_bonds, int _l)
 	: pbonds(&_bonds), NP(pbonds->GetN()), l(_l), Nbonds(pbonds->GetNBonds()), num_m(set_num_m(Dim,_l))
 {
 	init();
 }
 
 template <int Dim>
-void LocalOrder<Dim>::init()
+void CLocalOrder<Dim>::init()
 {
 	assert(l%2==0);
 
@@ -87,7 +87,7 @@ void LocalOrder<Dim>::init()
 }
 
 
-template <> void LocalOrder<2>::Calculate_qlmi()
+template <> void CLocalOrder<2>::Calculate_qlmi()
 {
 	dbl theta;
 	int nn;
@@ -109,7 +109,7 @@ template <> void LocalOrder<2>::Calculate_qlmi()
 	}
 }
 
-template <> void LocalOrder<3>::Calculate_qlmi()
+template <> void CLocalOrder<3>::Calculate_qlmi()
 {
 	dbl theta, phi;
 	int nn,m,b;
@@ -136,7 +136,7 @@ template <> void LocalOrder<3>::Calculate_qlmi()
 	}
 }
 
-static dbl normalized_product(vector<cdbl> vec, int i, int j, int lng)
+static dbl normalized_product(vector<cdbl> &vec, int i, int j, int lng)
 {
 	Eigen::VectorXcd vec1 = Eigen::VectorXcd::Zero(lng);
 	Eigen::VectorXcd vec2 = Eigen::VectorXcd::Zero(lng);
@@ -149,7 +149,7 @@ static dbl normalized_product(vector<cdbl> vec, int i, int j, int lng)
 	return std::real(vec1.dot(vec2))/(vec1.norm()*vec2.norm());
 }
 
-template<int Dim> void LocalOrder<Dim>::Calculate_Slij()
+template<int Dim> void CLocalOrder<Dim>::Calculate_Slij()
 {
 	Slij.assign(Nbonds, 0.);
 	int i, j, m;
@@ -161,7 +161,7 @@ template<int Dim> void LocalOrder<Dim>::Calculate_Slij()
 	}
 }
 
-template<int Dim> void LocalOrder<Dim>::Calculate_fi(dbl thresh)
+template<int Dim> void CLocalOrder<Dim>::Calculate_fi(dbl thresh)
 {
 	int num_connected;
 	fi.assign(NP, 0.);
@@ -180,7 +180,7 @@ template<int Dim> void LocalOrder<Dim>::Calculate_fi(dbl thresh)
 }
 
 
-template<int Dim> void LocalOrder<Dim>::Calculate(dbl thresh)
+template<int Dim> void CLocalOrder<Dim>::Calculate(dbl thresh)
 {
 	Calculate_qlmi();
 	Calculate_Slij();

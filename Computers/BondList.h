@@ -71,6 +71,7 @@ public:
 ///@{
 	void CalculateNeighbors(vector< vector<int> > &nbrs) const;		//!<Get a list of the neighbors of each particle
 	void RemoveBonds(vector<bool> const &BondsToRemove);			//!<Remove bonds from the list
+	void RemoveBonds(index_map const &BondMap);						//!<Remove bonds according to an index_map
 	void RemoveBondsAccordingToMap(index_map const &map);			//!<Remove any bonds that involve a node that is removed from the index_map.
 	void UpdateBondIndices(index_map const &map);					//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
 	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const; //!<Identify nodes that are not fixed and are involved in less than c bonds.
@@ -80,9 +81,10 @@ public:
 	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false);								//!<Overloaded method
 	void RemoveRattlers(int c=Dim+1, bool Verbose=false);												//!<Overloaded method
 
-	void MakeUnstressed();				//!<Remove the prestress form every bond.
-	void MultiplyForces(dbl m);			//!<Multiply all forces by a constant.
-	void MultiplyStiffnesses(dbl m);	//!<Multiply all spring constants by a constant.
+	void MakeUnstreachedSpringNetworkWithUnitStiffness();			//!<Remove the prestress from every bond, set the energy of each bond to zero and the stiffness to 1.
+	void MakeUnstressed();											//!<Remove the prestress form every bond.
+	void MultiplyForces(dbl m);										//!<Multiply all forces by a constant.
+	void MultiplyStiffnesses(dbl m);								//!<Multiply all spring constants by a constant.
 
 ///@}
 
@@ -111,11 +113,13 @@ public:
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
 	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 	void CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
+	void CalculateDetailedResponse_EnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &energyChange) const;
+	void CalculateDetailedResponse_BondEnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const;
 
 	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
 
-private:
+//private:
 	void Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &AffineDeltaR, dbl unstress_coeff, dbl stress_coeff) const;
 	dbl  CalculateEnergyChange(Eigen::VectorXd const &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const;
 
@@ -272,6 +276,30 @@ void CBondList<Dim>::RemoveBonds(vector<bool> const &BondsToRemove)
 	for(int i=0; i<(int)list.size(); ++i)
 		if(!BondsToRemove[i])
 			tlist.push_back(list[i]);
+
+	tlist.swap(list);
+}
+	
+/**
+ *	Bonds that are not removed are not altered in any way, and N does not change.
+ *	This method should have the exact same performance as the above method, 
+ *	just with a different input. It is completely different from "RemoveBondsAccordingToMap"
+ *
+ *	@param[in] BondMap A constant index_map that determins which bonds are to be removed.
+ */
+template<int Dim>
+void CBondList<Dim>::RemoveBonds(index_map const &BondMap)
+{
+	assert(BondMap.full_size == list.size());
+	vector<BOND> tlist;
+	tlist.reserve(list.size());
+
+	for(int im=0; im<BondMap.size(); ++im)
+		tlist.push_back(list[BondMap[im]]);
+
+//	for(int i=0; i<(int)list.size(); ++i)
+//		if(!BondsToRemove[i])
+//			tlist.push_back(list[i]);
 
 	tlist.swap(list);
 }
@@ -467,6 +495,16 @@ void CBondList<Dim>::RemoveBondsAccordingToMap(index_map const &map)
 	//indices are preserved
 }
 
+template<int Dim>
+void CBondList<Dim>::MakeUnstreachedSpringNetworkWithUnitStiffness()
+{
+	for(typename vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
+	{
+		b->E = 0.;
+		b->g = 0.;
+		b->k = 1.;
+	}
+}
 
 template<int Dim>
 void CBondList<Dim>::MakeUnstressed()
@@ -960,6 +998,65 @@ void CBondList<Dim>::CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat co
 	D1.solve_Mx_equals_b(uNonAffine_node, n_d2Udvdgamma);
 }
 
+//Same as above, except also calculate the change in energy.
+//If the bond between particles i and j has a change in energy of dE_bond,
+//then each particle has a change in energy of 1/2 dE_bond (plus
+//contributions from their other neighbors).
+template<int Dim>
+void CBondList<Dim>::CalculateDetailedResponse_EnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &energyChange) const
+{
+	CalculateDetailedResponse(D1, strain_tensor, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
+
+	energyChange = Eigen::VectorXd::Zero(GetN());
+
+	//Add the non-affine extension of each bond to the affine extension and calculate the change in energy for that bond
+	dvec DeltaR_total;
+	dbl g, k, DeltaRparallel2, DeltaRperp2;
+	dbl bondE;
+	for(int bi=0; bi<(int)list.size(); ++bi)
+	{
+		BOND const &b = list[bi];
+		DeltaR_total = DeltaR_bond.segment<Dim>(Dim*bi) + uNonAffine_node.segment<Dim>(Dim*b.j) - uNonAffine_node.segment<Dim>(Dim*b.i);
+
+		g = b.g*stress_coeff;
+		k = b.k*unstress_coeff;
+		DeltaRparallel2 = POW2(DeltaR_total.dot(b.r)/b.rlen);
+		DeltaRperp2     = DeltaR_total.squaredNorm() - DeltaRparallel2;
+		bondE = 0.5*(k*DeltaRparallel2 + g*DeltaRperp2/b.rlen);
+
+		energyChange[b.i] += 0.5*bondE;
+		energyChange[b.j] += 0.5*bondE;
+	}
+}
+
+//Same as above, except calculates the change in energy of bonds instead of particles.
+template<int Dim>
+void CBondList<Dim>::CalculateDetailedResponse_BondEnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const
+{
+	CalculateDetailedResponse(D1, strain_tensor, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
+
+	bondEnergyChange = Eigen::VectorXd::Zero(GetNBonds());
+
+	//Add the non-affine extension of each bond to the affine extension and calculate the change in energy for that bond
+	dvec DeltaR_total;
+	dbl g, k, DeltaRparallel2, DeltaRperp2;
+	dbl bondE;
+	for(int bi=0; bi<(int)list.size(); ++bi)
+	{
+		BOND const &b = list[bi];
+		DeltaR_total = DeltaR_bond.segment<Dim>(Dim*bi) + uNonAffine_node.segment<Dim>(Dim*b.j) - uNonAffine_node.segment<Dim>(Dim*b.i);
+
+		g = b.g*stress_coeff;
+		k = b.k*unstress_coeff;
+		DeltaRparallel2 = POW2(DeltaR_total.dot(b.r)/b.rlen);
+		DeltaRperp2     = DeltaR_total.squaredNorm() - DeltaRparallel2;
+		bondE = 0.5*(k*DeltaRparallel2 + g*DeltaRperp2/b.rlen);
+		bondEnergyChange[bi] = bondE;
+
+//		energyChange[b.i] += 0.5*bondE;
+//		energyChange[b.j] += 0.5*bondE;
+	}
+}
 
 template<int Dim>
 void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool CalcHess) const

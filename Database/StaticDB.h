@@ -47,6 +47,10 @@ public:
 
 	//Read parts of a state
 	virtual void ReadBoxMatrix(Eigen::Matrix<dbl,Dim,Dim> &trans, int rec);
+	
+
+	static int ExtractSystemSize(std::string fn="temp.nc");
+
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -216,6 +220,25 @@ void CStaticDatabase<Dim>::ReadBoxMatrix(Eigen::Matrix<dbl,Dim,Dim> &trans, int 
 	BoxMatrixVar	-> set_cur(rec);
 	BoxMatrixVar	->get(trans.data(),		1, dm2Dim->size());
 }
+
+	
+template <int Dim>
+int CStaticDatabase<Dim>::ExtractSystemSize(std::string fn)
+{
+	NcFile File(fn.c_str(), NcFile::ReadOnly);
+	NcDim *NPDim = File.get_dim("NP");
+	int NP_temp = (int)NPDim->size();
+	return NP_temp;
+}
+
+
+
+
+
+
+
+
+
 
 }
 

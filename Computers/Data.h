@@ -12,8 +12,8 @@ class CStdData
 {
 	typedef Eigen::Matrix<dbl,Dim,Dim> dmat;
 public:
-	int NPp;
-	int Nc;
+	int NPp;		//!<Number of particles participating (i.e. not rattlers)
+	int Nc;			//!<Number of contacts
 	dbl Volume;
 
 	dbl Energy;
@@ -29,6 +29,11 @@ public:
 	inline int NcmNciso()	const { return Nc - Nciso(); };
 	inline dbl Z()			const { return 2.*((dbl)Nc)/((dbl)NPp); };
 	inline dbl deltaZ()		const { return 2.*((dbl)NcmNciso())/((dbl)NPp); };
+
+	CStdData()
+	{
+		SetZero();
+	};
 
 	void SetZero()
 	{
@@ -78,6 +83,8 @@ public:
 			for(int d2=d1; d2<Cik.cols(); ++d2) printf(" % e  ", Cik(d1,d2));
 			printf("\n");
 		}
+		printf("\tG = % e\n", cijkl.CalculateShearModulus());
+		printf("\tB = % e\n", cijkl.CalculateBulkModulus());
 		printf("----------------------------------------------------------------\n\n");
 	}
 

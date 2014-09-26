@@ -6,7 +6,8 @@ Computers/UmfpackInterface.o \
 Resources/Resources.o \
 Resources/Exception.o \
 Resources/index_map.o \
-Resources/RNG_taus.o
+Resources/RNG_taus.o \
+Resources/gnuplot_i.o
 
 #Compiler
 CPP=icpc
@@ -29,7 +30,6 @@ ifeq ($(COMPUTER_NAME),$(Fiji_NAME))
 include $(DIR)/MAKE/fiji_make.mk
 endif
 endif
-
 
 
 

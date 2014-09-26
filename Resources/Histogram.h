@@ -188,7 +188,11 @@ void Histogram<T,U>::MinVariableWidth_Private(vector<T> const &data, int Nppb, U
 	for(int first = 0; first < Ndata; )
 	{
 		Npib = std::min(Nppb,Ndata - first);
-		if(Npib <= 1) continue;
+		if(Npib <= 1)
+		{
+			first += Npib;
+			continue;
+		}
 
 		it1 = data.begin()+first;
 		it2 = std::lower_bound(it1+Npib, data.end(), (*it1)+minWidth);

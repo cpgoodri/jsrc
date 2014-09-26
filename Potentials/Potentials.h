@@ -6,6 +6,8 @@
 #include "HarmonicPotential.h"
 #include "HertzianPotential.h"
 #include "SoftPotential.h"
+#include "RegLJPotential.h"
+#include "KALJPotential.h"
 
 namespace LiuJamming
 {
@@ -29,9 +31,11 @@ static std::map<string,CPotential*> CreatePotentialMap()
 	CPotential *p;
 	
 	//For each potential...
-	p = new CHarmonicPotential(); m[CHarmonicPotential::GetName()] = p;
-	p = new CHertzianPotential(); m[CHertzianPotential::GetName()] = p;
-	p = new CSoftPotential();     m[CSoftPotential::GetName()] = p;
+	p = new CHarmonicPotential(); m[CHarmonicPotential::GetName()]	= p;
+	p = new CHertzianPotential(); m[CHertzianPotential::GetName()]	= p;
+	p = new CSoftPotential();     m[CSoftPotential::GetName()]		= p;
+	p = new CRegLJPotential();    m[CRegLJPotential::GetName()]		= p;
+	p = new CKALJPotential();     m[CKALJPotential::GetName()]		= p;
 
 	return m;
 }

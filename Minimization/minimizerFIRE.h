@@ -44,6 +44,7 @@ private:
 	int  IPARAM_print_iter;
 	bool IPARAM_do_not_use_report_header;	//This is set true if the user does not pass a report_header_t function.
 	bool IPARAM_functions_set;
+	bool FIRE_PARAM_limit_step;
 
 
 	//Object and pointers object member functions
@@ -87,6 +88,7 @@ public:
 	void set_tol(dbl t)									{ PARAM_convergence_tol					= t;				};
 	void set_FIRE_delta_t_start(dbl t)					{ FIRE_PARAM_delta_t_start				= t;				};
 	void set_FIRE_delta_t_max(dbl t)					{ FIRE_PARAM_delta_t_max				= t;				};
+	void set_FIRE_limit_step(bool ls)					{ FIRE_PARAM_limit_step					= ls;				};
 	void set_default_params()
 	{
 		PARAM_max_iterations = 1e8;
@@ -104,6 +106,8 @@ public:
 		IPARAM_print_iter			= 1000;
 		IPARAM_do_not_use_report_header = false;
 		IPARAM_functions_set = false;
+	
+		FIRE_PARAM_limit_step = false;
 	};
 
 
@@ -128,6 +132,13 @@ public:
 		
 		//calculate x(t+delta_t) = x(t) + v(t)*delta_t + 0.5*a(t)*delta_t^2
 		step = delta_t*v - half_delta_t2*grad; //a = f = -g
+		if(FIRE_PARAM_limit_step)
+		{
+			dbl max_displacement = 0.5;
+			for(i=0; i<step.size(); ++i)
+				if(fabs(step[i])>max_displacement)
+					printf("Warning, step[%i] = %e\n", i, step[i]);
+		}
 		move(step);
 		
 		//calculate v(t+delta_t/2) = v(t) + 0.5*a(t)*delta_t

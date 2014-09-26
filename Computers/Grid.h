@@ -342,7 +342,11 @@ void CGrid<Dim>::Construct()
 		//We should be able to do this without copying the particle positions
 		State->GetParticlePositionVirtual(PosTemp, i);
 		Cell_Index = CoordinatesToCell(PosTemp);
-		assert(Cell_Index >= 0);
+		if(Cell_Index < 0)
+		{
+			printf("Cell_Index = %i\n", Cell_Index);
+			assert(Cell_Index >= 0);
+		}
 		assert(Cell_Index <  TotalCells);
 		
 		//Add the particle to that cell

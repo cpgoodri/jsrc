@@ -137,6 +137,8 @@ public:
 	void SetRadii(const Eigen::VectorXd &t_Radii);	//!<Set all the radii
 	void SetRadius(int i,dbl r);					//!<Set an individual radius
 	void SetPackingFraction(dbl phi);				//!<Set the packing fraction without changing the relative radii
+	void SetNumberDensity(dbl rho);					//!<Set the number density without changing the radii
+	void SetVolume(dbl V);							//!<Set the volume without changing the radii
 
 	void SetPositions		(const Eigen::VectorXd &t_Positions);		//!<Set particle positions
 	void SetPositionsVirtual(const Eigen::VectorXd &t_Positions);
@@ -165,6 +167,7 @@ public:
 
 	dbl  GetSphereVolume() const;		//!<Get the combined volume of all the spheres
 	dbl  GetPackingFraction() const;	//!<Get the packing fraction
+	dbl  GetNumberDensity() const;		//!<Get the number density
 	dbl  GetVolume() const;				//!<Get the volume
 	int  GetParticleNumber() const;		//!<Get the number of particles
 
@@ -275,7 +278,8 @@ CStaticState<Dim>::CStaticState(CStaticState const &copy, index_map const &Inclu
 template<int Dim>
 static void calculate_offset(int c, Eigen::Matrix<int,Dim,1> copies_per_side, Eigen::Matrix<dbl,Dim,1> &offset)
 {
-	Eigen::Matrix<int,2,1> cell = Eigen::Matrix<int,2,1>::Zero();
+//	Eigen::Matrix<int,2,1> cell = Eigen::Matrix<int,2,1>::Zero();
+	Eigen::Matrix<int,Dim,1> cell = Eigen::Matrix<int,Dim,1>::Zero();
 	for(int i=0; i<c; ++i)
 	{
 		++cell[0];
@@ -861,6 +865,19 @@ void CStaticState<Dim>::SetPackingFraction(dbl phi)
 	assert( fabs(GetPackingFraction()-phi) < 1e-10 );
 }
 
+template <int Dim>
+void CStaticState<Dim>::SetNumberDensity(dbl rho)
+{
+	dbl V = ((dbl)N)/rho;
+	Box->SetVolume(V);
+}
+
+template <int Dim>
+void CStaticState<Dim>::SetVolume(dbl V)
+{
+	Box->SetVolume(V);
+}
+
 
 
 //Functions to get properties of the system
@@ -974,6 +991,12 @@ template <int Dim>
 dbl CStaticState<Dim>::GetPackingFraction() const
 {
 	return GetSphereVolume()/GetVolume();
+}
+
+template <int Dim>
+dbl CStaticState<Dim>::GetNumberDensity() const
+{
+	return ((dbl)N)/GetVolume();
 }
 
 template <int Dim>

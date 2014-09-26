@@ -102,6 +102,8 @@ public:
 	void ComputeBondList_NoGrid(CBondList<Dim> &bonds) const;
 	void SetUseGrid(bool usegrid=true);
 
+	CGrid<Dim>& GetGrid();			//!<Return a reference to the grid object
+	
 
 	int  StdPrepareSystem(bool verbose = true);								//!<Compute the bonds list and remove rattlers
 	int  StdPrepareSystem(vector<bool> const &fixed, bool verbose = true);	//!<Compute the bonds list and remove rattlers, assuming some fixed particles
@@ -229,6 +231,12 @@ template <int Dim>
 void CStaticComputer<Dim>::SetUseGrid(bool usegrid)
 {
 	UseGrid = usegrid;
+}
+
+template <int Dim>
+CGrid<Dim>& CStaticComputer<Dim>::GetGrid() 
+{
+	return Grid;
 }
 
 //Compute the bond list
@@ -396,12 +404,12 @@ bool CStaticComputer<Dim>::Progress(Eigen::VectorXd const &grad, dbl fx, int ite
 	dbl gradNorm = grad.norm();
 	dbl max_grad = max_abs_element(grad.size(), grad.data());
 	bool converged = (max_grad < tol)?true:false;
-	if(converged){ printf("converged\n"); fflush(stdout);}
+//	if(converged){ printf("converged\n"); fflush(stdout);}
 	if(print_iter > 0)
 	{
 		if(iteration%print_iter==0 || converged)
 		{
-			printf("% 11i   %22.20e   % e   % e\n", iteration, fx, gradNorm, max_grad);
+			printf("% 11i   %22.20e   % e   % e  %s\n", iteration, fx, gradNorm, max_grad, converged?"converged":" ");
 			fflush(stdout);
 		}
 	}

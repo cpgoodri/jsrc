@@ -65,6 +65,44 @@ inline dbl mean(ForwardIterator first, ForwardIterator last)
 	return m;
 }
 
+template <class ForwardIterator>
+inline int mean_var(ForwardIterator first, ForwardIterator last, dbl &m, dbl &v)
+{
+	m = (dbl)(*first);
+	dbl m2 = (dbl)POW2( (*first) );
+	int Ndata = 1;
+	while(++first!=last)
+	{
+		++Ndata;
+		m  += ( ((dbl)(*first))-m )/((dbl)Ndata);
+		m2 += ( ((dbl)POW2((*first)))-m2 )/((dbl)Ndata);
+	}
+	v = m2 - POW2(m);
+	if( v < 0.)
+	{
+		printf("WARNING: v = %e\n", v);
+		assert( false );
+	}
+	return Ndata;
+}
+
+template <class ForwardIterator>
+inline int mean_stdev(ForwardIterator first, ForwardIterator last, dbl &m, dbl &stdev)
+{
+	dbl v;
+	int Ndata = mean_var(first, last, m, v);
+	stdev = sqrt(v);
+	return Ndata;
+}
+
+template <class ForwardIterator>
+inline int mean_error(ForwardIterator first, ForwardIterator last, dbl &m, dbl &e)
+{
+	dbl v;
+	int Ndata = mean_var(first, last, m, v);
+	e = sqrt(v)/sqrt( (dbl)Ndata );
+	return Ndata;
+}
 
 
 
