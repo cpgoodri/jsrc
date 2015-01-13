@@ -137,6 +137,10 @@ dbl cCIJKL<2>::calc_weakest_deformation() const
 	return (eigensolver.eigenvalues()).minCoeff();
 }
 
+dbl cCIJKL<2>::CalculateTrace() const
+{
+	return cxxxx+cyyyy+cxyxy;
+}
 	
 
 
@@ -544,6 +548,11 @@ dbl cCIJKL<3>::calc_weakest_deformation() const
 	return (eigensolver.eigenvalues()).minCoeff();
 }
 
+dbl cCIJKL<3>::CalculateTrace() const
+{
+	return cxxxx+cyyyy+czzzz+cyzyz+cxzxz+cxyxy;
+}
+	
 
 
 

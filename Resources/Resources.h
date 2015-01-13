@@ -78,7 +78,7 @@ inline int mean_var(ForwardIterator first, ForwardIterator last, dbl &m, dbl &v)
 		m2 += ( ((dbl)POW2((*first)))-m2 )/((dbl)Ndata);
 	}
 	v = m2 - POW2(m);
-	if( v < 0.)
+	if( v < -1e-14)
 	{
 		printf("WARNING: v = %e\n", v);
 		assert( false );

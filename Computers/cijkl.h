@@ -54,6 +54,7 @@ public:
 	dbl CalculateBulkModulus() const;			//!<Get the bulk modulus
 	dbl CalculateShearModulus() const;			//!<Get the shear modulus
 	dbl calc_weakest_deformation() const;	//!<Get the weakest response to any strain.
+	dbl CalculateTrace() const;					//Calculate the *correct* trace of cijkl
 
 ///@}
 
@@ -155,6 +156,7 @@ public:
 	//! Calculate all the angle averaged elastic constants.
 	void CalculateRotationalAverages(dbl &B, dbl &GDC, dbl &GAC, dbl &UDC, dbl &UAC, dbl &DDC, dbl &DAC, dbl &TDC, dbl &TAC) const;	
 	dbl calc_weakest_deformation() const; //!<Get the weakest response to any strain.
+	dbl CalculateTrace() const;					//Calculate the *correct* trace of cijkl
 	
 ///@}
 

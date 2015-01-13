@@ -102,12 +102,12 @@ public:
 	void ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;								//!<Compute the hessian, note: the hessian is NOT mass-normalized.
 	void ComputeGeneralizedHessian(Eigen::SparseMatrix<dbl> &hess, dmat const &strain, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;//!<Compute the generalized hessian with one additional degree of freedom associated with the strain tensor "strain"
 	
-	void PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const;
+	void PlaneWaveAnsatz(Eigen::SparseMatrix<cdbl> &transformation, Eigen::VectorXd const &Positions, dvec const &k) const;	//!< THIS IS NOT TESTED!!!!!!!!!	
 	//void ComputeHessianElements(vector<cTRIP> &coefficients, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;	//!<Compute the elements of the hessian as a list.
 	//void ComputeHessian_BZ(Eigen::SparseMatrix<cdbl> &hess, dvec k, dbl unstress_coeff=1., dbl stress_coeff=1., dbl tether=0.) const;		//!<Compute the hessian at non-zero wavevector k, note: the hessian is NOT mass-normalized.
 
 	//void ComputeEquilibriumMatrixElements(vector<cTRIP> &coefficients, dvec k) const;
-	void ComputeEquilibriumMatrix   (Eigen::SparseMatrix<dbl> &Amatrix) const;
+	void ComputeEquilibriumMatrix   (Eigen::SparseMatrix<dbl> &Amatrix) const; //!< THIS IS NOT TESTED!!!!!!!!!
 	//void ComputeEquilibriumMatrix_BZ(Eigen::SparseMatrix<dbl> &Amatrix, dvec k) const;
 
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.

@@ -15,6 +15,7 @@ class Histogram
 {
 private:
 	vector< pair<U,U> > hist;
+	vector<int> count;
 	int Ndata;
 
 //	vector<T> temp;
@@ -40,9 +41,10 @@ public:
 	void MinVariableWidth(vector<T> const &data, int Nppb, U minWidth);
 
 	//Retreive histogram:
-	inline int Nbins() const	{	return (int)hist.size();	};
-	inline U x(int i) const		{	return hist[i].first;		};
-	inline U y(int i) const		{	return hist[i].second;		};
+	inline int Nbins() const			{	return (int)hist.size();	};
+	inline U x(int i) const				{	return hist[i].first;		};
+	inline U y(int i) const				{	return hist[i].second;		};
+	inline int get_count(int i) const	{	return count[i];			};
 };
 
 
@@ -142,6 +144,7 @@ void Histogram<T,U>::VariableWidth_Private(vector<T> const &data, int Nppb)
 {
 	assert(CheckSort(data));
 	hist.clear();
+	count.clear();
 	Ndata = (int)data.size();
 
 	typename vector<T>::const_iterator it1, it2;
@@ -158,7 +161,9 @@ void Histogram<T,U>::VariableWidth_Private(vector<T> const &data, int Nppb)
 		width = (*it2) - (*it1);
 		avg = mean(it1,it2);
 		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
+		count.push_back( Npib );
 	}
+	assert(hist.size() == count.size());
 }
 
 template <typename T, typename U>
