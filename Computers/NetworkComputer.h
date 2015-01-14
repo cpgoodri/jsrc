@@ -95,6 +95,7 @@ public:
 	int GetNdof() const;
 
 //Compute the bond list
+	void ComputeBondList();
 	void ComputeBondList(CBondList<Dim> &bonds);
 
 	int  StdPrepareSystem(bool verbose = true);								//!<Compute the bonds list and remove rattlers
@@ -184,6 +185,13 @@ inline dbl CNetworkComputer<Dim>::GetMinimizationTimeScale() const
 }
 
 //Compute the bond list
+template <int Dim>
+void CNetworkComputer<Dim>::ComputeBondList()
+{
+	ComputeBondList(Bonds);
+}
+
+
 template <int Dim>
 void CNetworkComputer<Dim>::ComputeBondList(CBondList<Dim> &bonds)
 {

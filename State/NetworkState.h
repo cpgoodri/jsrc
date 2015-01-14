@@ -35,9 +35,13 @@ public:
 //Constructors/Destructors and copy operators
 	CNetworkState();														//!<Default constructor
 	CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness);
+	CNetowrkState(CNetworkState const &copy);								//!<Copy constructor
+	CNetworkState<Dim> &operator=(CNetworkState<Dim> const &copy);			//!<Copy operator
 	~CNetworkState();
 
 //Functions to set properties of the system
+	void InitializeFromStaticState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness);
+
 	void SetPositions		(const Eigen::VectorXd &t_Positions);		//!<Set node positions
 	void SetPositionsVirtual(const Eigen::VectorXd &t_Positions);
 	void SetNodePosition		(const dvec &t_Position,int i);		//!<Set an individual node's position
@@ -63,38 +67,16 @@ public:
 
 	void GetBondisBondjs(Eigen::VectorXi &, Eigen::VectorXi &) const;
 	void Getij(int bi, int &i, int &j) const;
+	int  Geti(int bi) const;
+	int  Getj(int bi) const;
 
 	void GetStiffnesses(Eigen::VectorXd &) const;		//!<Copy the vector of stiffnesses
-	dbl GetBondStiffness(int bi) const;
+	dbl  GetBondStiffness(int bi) const;
 	
 	void GetELengths(Eigen::VectorXd &) const;		//!<Copy the vector of ELengths
-	dbl GetBondELength(int bi) const;
+	dbl  GetBondELength(int bi) const;
 
-	dbl GetAverageELength() const;
-
-
-	dbl fn(myClass &a)
-	{
-		a.my_fn();
-	}
-
-	dbl fn(myClass *a)
-	{
-		a->my_fn();
-	}
-
-	dbl fn(const dbl &a)
-	{
-		a = 4.;
-	}
-	
-	dbl fn(dbl const &a)
-	
-	dbl fn(dbl const *a)
-
-	dbl fn(dbl & const a)
-
-
+	dbl  GetAverageELength() const;
 	void GetBondInfo(int bi, int &i, int &j, dbl &dr0, dbl &k0) const;
 
 	CBox<Dim>*  GetBox() const;			//!<Return a pointer to the box object
@@ -105,7 +87,35 @@ public:
 	int  GetNBonds() const;
 };
 
+template<int Dim>
+CNetworkState<Dim>::CNetworkState()
+	: N(0),
+	  Nbonds(0),
+	  Box(NULL),
+	  Potential(NULL)
+{}
 
+template<int Dim>
+CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
+	: N(0),
+	  Nbonds(0),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	InitializeFromStaticState(s_in, MakeUnstressed, UseUnitStiffness);
+}
+
+template<int Dim>
+CNetowrkState<Dim>::CNetowrkState(CNetworkState<Dim> const &copy)
+	: N(0),
+	  Nbonds(0),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	(*this) = copy;
+}
+
+/*
 template<int Dim>
 CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
 	: N(0),
@@ -116,6 +126,60 @@ CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstre
 	if(Potential!=NULL)	delete Potential;
 	Box			= s_in.GetBox()->Clone();		//Clone() gives a deep copy
 	Potential   = new CHarmonicSpringPotential(); //This is the only potential I have implemented so far for springs
+
+	CStaticState<Dim> s(s_in);
+	CStaticComputer<Dim> c(s);
+	if(c.StdPrepareSystem())
+	{
+		printf("Warning!!!!\n");
+		assert(false);
+	}
+	c.CalculateStdData(false,false);
+
+	N = c.Data.NPp;
+	Nbonds = c.Bonds.GetNBonds();
+
+	Positions   = Eigen::VectorXd::Zero(Dim*N);
+	Bondi       = Eigen::VectorXi::Zero(Nbonds);
+	Bondj       = Eigen::VectorXi::Zero(Nbonds);
+	Stiffnesses	= Eigen::VectorXd::Zero(Nbonds);
+	ELengths    = Eigen::VectorXd::Zero(Nbonds);
+	assert(N == c.RattlerMap.size());
+
+	//Set node positions
+	Eigen::VectorXd PosTemp;
+	s_in.GetPositionsVirtual(PosTemp);
+	for(int im=0; im<N; ++im)
+		for(int dd=0; dd<Dim; ++dd)
+			Positions[Dim*im+dd] = PosTemp[Dim*c.RattlerMap[im]+dd];
+
+	//Set equilibrium lengths and stiffnesses
+	for(int bi=0; bi<Nbonds; ++bi)
+	{
+		Bondi[bi] = c.Bonds[bi].i;
+		Bondj[bi] = c.Bonds[bi].j;
+
+		dbl radsum = s.GetRadius(c.RattlerMap[c.Bonds[bi].i]) + s.GetRadius(c.RattlerMap[c.Bonds[bi].j]);
+		if(MakeUnstressed)
+			ELengths[bi] = c.Bonds[bi].rlen; //Use current distance between nodes
+		else
+			ELengths[bi] = radsum; //Use the sum of the radii of the original packing.
+
+		if(UseUnitStiffness)
+			Stiffnesses[bi] = 1.;
+		else
+			Stiffnesses[bi] = 1./POW2(radsum); //Not sure if this works for alpha!=2
+	}
+}
+*/
+
+template<int Dim>
+void CNetworkState<Dim>::InitializeFromStaticState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
+{
+	if(Box!=NULL)		delete Box;
+	if(Potential!=NULL)	delete Potential;
+	Box			= s_in.GetBox()->Clone();		//Clone() gives a deep copy
+	Potential   = new CHarmonicSpringPotential(); //WARNING!! NOT GENERAL. This is the only potential I have implemented so far for springs
 
 	CStaticState<Dim> s(s_in);
 	CStaticComputer<Dim> c(s);
@@ -415,6 +479,18 @@ void CNetworkState<Dim>::Getij(int bi, int &i, int &j) const
 {
 	i = Bondi[bi];
 	j = Bondj[bi];
+}
+
+template <int Dim>
+void CNetworkState<Dim>::Geti(int bi) const
+{
+	return Bondi[bi];
+}
+
+template <int Dim>
+void CNetworkState<Dim>::Getj(int bi) const
+{
+	return Bondj[bi];
 }
 
 template <int Dim>
