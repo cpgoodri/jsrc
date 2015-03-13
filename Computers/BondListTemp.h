@@ -34,6 +34,7 @@ class CBondList
 	int N;						//!<Number of possible nodes.
 	dbl Volume;					//!<Volume containing the bonds.
 	vector<BOND> list;			//!<A list of the bonds.
+	vector<bool> fixedNodes		//!<A list of nodes that are fixed.
 
 ///@}
 
@@ -74,12 +75,10 @@ public:
 	void RemoveBonds(index_map const &BondMap);						//!<Remove bonds according to an index_map
 	void RemoveBondsAccordingToMap(index_map const &map);			//!<Remove any bonds that involve a node that is removed from the index_map.
 	void UpdateBondIndices(index_map const &map);					//!<When some nodes are removed, as expressed by the index_map map, decrease the i and j indices of all bonds accordingly.
-	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false) const; //!<Identify nodes that are not fixed and are involved in less than c bonds.
-	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const; //!<Identify rattlers assuming no fixed nodes.
-	void RemoveRattlers(index_map &map, vector<bool> const &fixed, int c=Dim+1, bool Verbose=false);	//!<Remove rattlers (i.e. nodes with less than c bonds), and return the corresponding index_map.
-	void RemoveRattlers(vector<bool> const &fixed, int c=Dim+1, bool Verbose=false);					//!<Overloaded method
-	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false);								//!<Overloaded method
-	void RemoveRattlers(int c=Dim+1, bool Verbose=false);												//!<Overloaded method
+	
+	int  IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c=Dim+1, bool Verbose=false) const; //!<Identify rattlers 
+	void RemoveRattlers(index_map &map, int c=Dim+1, bool Verbose=false);	//!<Remove rattlers (i.e. nodes with less than c bonds), and return the corresponding index_map.
+	void RemoveRattlers(int c=Dim+1, bool Verbose=false);					//!<Overloaded method
 
 	void MakeUnstreachedSpringNetworkWithUnitStiffness();			//!<Remove the prestress from every bond, set the energy of each bond to zero and the stiffness to 1.
 	void MakeUnstressed();											//!<Remove the prestress form every bond.
@@ -112,15 +111,10 @@ public:
 	//void ComputeEquilibriumMatrix_BZ(Eigen::SparseMatrix<dbl> &Amatrix, dvec k) const;
 
 	void CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff=1., dbl stress_coeff=1., bool Verbose=true) const;	//!<Compute the elastic constants.
-
-	void CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 	void CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
-	void CalculateDetailedResponse_FixedNodes(MatrixInterface<dbl> &D1, dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;
-	void CalculateDetailedResponse_FixedNodes(dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;
-	
+	void CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff=1., dbl stress_coeff=1.) const;  //!<Compute the affine and non-affine displacements (as well as the induced forces) as a result of a given strain tensor.
 	void CalculateDetailedResponse_EnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &energyChange) const;
 	void CalculateDetailedResponse_BondEnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const;
-	void CalculateDetailedResponse_BondEnergyChange_FixedNodes(MatrixInterface<dbl> &D1, dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const;
 
 	void CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl=true, bool CalcHess=true) const;
 ///@}
@@ -136,8 +130,8 @@ public:
 	bool CheckConsistency() const;				//!<Check that the i and j index of every bond is less than N and greater than or equal to 0.
 	void PrintBonds() const;					//!<Print the bond list to stdout.
 	void PrintBonds_txt(char *filename) const;	//!<Print the bond list to a text file
-	void GetFixedDOFMap(vector<bool> const &fixed, index_map &fixedDOFMap) const;
 
+	void GetFixedDOFMap(index_map &fixedDOFMap) const;
 ///@}
 };
 
@@ -153,7 +147,7 @@ public:
 
 template<int Dim>
 CBondList<Dim>::CBondList(int _N, dbl V)
-	:N(_N), Volume(V) 
+	:N(_N), Volume(V), fixedNodes(false,_N)
 {};
 
 template<int Dim>
@@ -170,6 +164,7 @@ CBondList<Dim> &CBondList<Dim>::operator=(const CBondList<Dim> &src)
 		N = src.N;
 		Volume = src.Volume;
 		list = src.list;
+		fixedNodes = src.fixedNodes;
 	}
 	return *this;
 }
@@ -180,11 +175,22 @@ CBondList<Dim> &CBondList<Dim>::operator=(const CBondList<Dim> &src)
 template<int Dim>
 inline void CBondList<Dim>::AddBond(const BOND &b)
 {
+	int Nold = N;
 	assert(b.i>=0);
 	assert(b.j>=0);
 	if(b.i>=N) N=b.i+1;
 	if(b.j>=N) N=b.j+1;
 	list.push_back(b);
+
+	assert(N >= Nold);
+	if(N > Nold)
+	{
+		assert((int)fixedNodes.size() == Nold);
+		for(int i=Nold; i<N; ++i)
+			fixedNodes.push_back(false);
+	}
+	assert((int)fixedNodes.size() == N);
+
 }
 
 template<int Dim>
@@ -197,6 +203,10 @@ template<int Dim>
 void CBondList<Dim>::SetN(int _N)
 {
 	N = _N;
+	if(fixedNodes.Empty())
+		fixedNodes.assign(N, false);
+	if((int)fixedNodes.size() != N)
+		fixedNodes.resize(N, false);
 }
 
 template<int Dim>
@@ -211,6 +221,7 @@ void CBondList<Dim>::RemoveAllBonds()
 	list.clear();
 	N=0;
 	Volume=0;
+	fixedNodes.clear();
 }
 
 template<int Dim>
@@ -333,14 +344,15 @@ void CBondList<Dim>::UpdateBondIndices(index_map const &map)
  *	@param[in,out] rattlers A vector of bools such that node i is a rattler if rattlers[i]==true. Nodes can be manually designated as a rattler by setting 
  *	rattlers[i]=true before calling this function (normally, all elements of rattlers should be initialied to false). On return, this identifies the nodes that
  *	are rattlers.
- *	@param[in] fixed A vector of bools that identifies nodes as being fixed, and thus cannot become a rattler.
  *	@param[in] c The number of bonds involving a node required for that node to not be a rattler. Default is Dim+1.
  *	@param[in] Verbose Bool to determine if number of identified rattlers, etc. should be printed to stdout.
  *	@return The total number of rattlers.
  */
 template<int Dim>
-int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, vector<bool> const &fixed, int c, bool Verbose) const
+int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c, bool Verbose) const
 {
+	assert((int)fixedNodes.size() == N);
+
 	assert(rattlers.size() == nbrs.size());
 	assert(rattlers.size() == N);
 	int num_total_rattlers = 0;
@@ -371,7 +383,7 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 		new_rattlers_found = 0;
 		for(int i=0; i<N; ++i)
 		{
-			if((int)nbrs[i].size() < c && !rattlers[i] && !fixed[i])
+			if((int)nbrs[i].size() < c && !rattlers[i] && !fixedNodes[i])
 			{
 				RemoveFromNeighborsList(nbrs,i);
 				rattlers[i] = true;
@@ -387,7 +399,7 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 	//Perform Checks
 	for(int i=0; i<N; ++i)
 	{
-		if(!fixed[i])
+		if(!fixedNodes[i])
 		{
 			if(rattlers[i] && ((int)nbrs[i].size())>0)
 			{
@@ -415,31 +427,26 @@ int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &
 	return num_total_rattlers;
 }
 
-template<int Dim>
-int CBondList<Dim>::IdentifyRattlers(vector< vector<int> > &nbrs, vector<bool> &rattlers, int c, bool Verbose) const
-{
-	vector<bool> fixed;	fixed.assign(N,false);
-	return IdentifyRattlers(nbrs,rattlers,fixed,c,Verbose);
-}
 
 /**
  *	This method calculates the nbrs list, identifies rattlers, sets map, removes any bonds that may involve rattlers, and updates the i and j indices of each bond (as well as N) to account for the removed rattlers.
  *	
  *	@param[out] map An index_map indicating which nodes are rattlers.
- *	@param[in] fixed A vector of bool's that indicates if a node is fixed (true) and thus should never be considered.
  *	@param[in] c The number of bonds involving a node required for that node to not be a rattler. Default is Dim+1.
  *	@param[in] Verbose Bool to determine if number of identified rattlers, etc. should be printed to stdout.
  */
 template<int Dim>
-void CBondList<Dim>::RemoveRattlers(index_map &map, vector<bool> const &fixed, int c, bool Verbose)
+void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
 {
+	assert((int)fixedNodes.size() == N);
+
 	//Calculate the nbrs list
 	vector< vector<int> > nbrs;
 	CalculateNeighbors(nbrs);
 	
 	//Identify the rattlers and set the map
 	vector<bool> rattlers(N,false);
-	IdentifyRattlers(nbrs, rattlers, fixed, c, Verbose);
+	IdentifyRattlers(nbrs, rattlers, fixedNodes, c, Verbose);
 	map.set_map(rattlers);
 
 	//Remove the bonds that correspond to rattlers
@@ -460,22 +467,9 @@ template<int Dim>
 void CBondList<Dim>::RemoveRattlers(int c, bool Verbose)
 {
 	index_map map;
-	vector<bool> fixed;	fixed.assign(N,false);
-	RemoveRattlers(map, fixed, c, Verbose);
+	RemoveRattlers(map, c, Verbose);
 }
 
-template<int Dim>
-void CBondList<Dim>::RemoveRattlers(vector<bool> const &fixed, int c, bool Verbose)
-{
-	index_map map;
-	RemoveRattlers(map, fixed, c, Verbose);
-}
-template<int Dim>
-void CBondList<Dim>::RemoveRattlers(index_map &map, int c, bool Verbose)
-{
-	vector<bool> fixed;	fixed.assign(N,false);
-	RemoveRattlers(map, fixed, c, Verbose);
-}
 
 
 template<int Dim>
@@ -598,9 +592,17 @@ dbl  CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad) const
 			grad[Dim*b->j+dd] -= temp[dd];
 		}
 	}
+
+	assert(Dim*(int)fixedNodes.size() == grad.size());
+	for(int i=0; i<(int)fixedNodes.size(); ++i)
+		if(fixedNodes[i])
+			for(int dd=0; dd<Dim; ++dd)
+				grad[Dim*i+dd] = 0.;
+
 	return energy;
 }
 
+//This is an additional method that will be kept for added flexibility
 template<int Dim>
 dbl CBondList<Dim>::ComputeGradient(Eigen::VectorXd &grad, vector<bool> const &FixedDOF) const
 {
@@ -664,10 +666,23 @@ void CBondList<Dim>::ComputeHessianElements(vector<TRIP> &coefficients, dbl unst
 template<int Dim>
 void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
+	index_map fixedDOFMap;
+	GetFixedDOFMap(fixedDOFMap);
+
 	//First, compute the matrix elements
-	vector<TRIP> coeffs;
-	ComputeHessianElements(coeffs, unstress_coeff, stress_coeff, tether);
+	vector<TRIP> coeffsTemp, coeffs;
+	ComputeHessianElements(coeffsTemp, unstress_coeff, stress_coeff, tether);
 	
+	//Now, copy only those that don't correspond to at least one fixed DOF
+	int r, c;
+	for(vector<TRIP>::const_iterator it=coeffsTemp.begin(); it!=coeffsTemp.end(); ++it)
+	{
+		r = it->row();
+		c = it->col();
+		if( !(fixedDOFMap.inv(r) == -1 || fixedDOFMap.inv(c) == -1) )
+			coeffs.push_back( TRIP(fixedDOFMap.inv(r), fixedDOFMap.inv(c), it->value()) ); 
+	}
+
 	//Create the matrix from the elements
 	Eigen::SparseMatrix<dbl> temp(Dim*N,Dim*N);
 	hess = temp;
@@ -678,6 +693,13 @@ void CBondList<Dim>::ComputeHessian(Eigen::SparseMatrix<dbl> &hess, dbl unstress
 template<int Dim>
 void CBondList<Dim>::ComputeHessianWithFixedDOF(Eigen::SparseMatrix<dbl> &hess, index_map &fixedDOFMap, dbl unstress_coeff, dbl stress_coeff, dbl tether) const
 {
+	//Create an index_map from the fixed degrees of freedom
+//	assert((int)fixedDOF.size() == Dim*N);
+//	index_map fixedDOFMap((int)fixedDOF.size());
+//	fixedDOFMap.set_map(fixedDOF);
+//	for(int im=0; im<fixedDOFMap.size(); ++im)
+//		assert(fixedDOF[fixedDOFMap[im]] == false);
+
 	assert(fixedDOFMap.full_size == Dim*N);
 
 	//First, compute the matrix elements of the full hessian
@@ -892,7 +914,7 @@ void CBondList<Dim>::ComputeEquilibriumMatrix(Eigen::SparseMatrix<dbl> &Amatrix)
 /**
  *	This method does 2 things.
  *		1. It calculates the affine extension induced on each bond from the stratin tensor.
- *		2. It calculates the induced force on each particle from the strain tensor.
+ *		2. It calculates the induced force on each particle from the straint tensor.
  */
 template<int Dim>
 void CBondList<Dim>::Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &AffineDeltaR, dbl unstress_coeff, dbl stress_coeff) const
@@ -918,14 +940,17 @@ void CBondList<Dim>::Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::V
 
 		//Calculate the induced forces on particles i and j.
 		D2i = (DeltaRparallel/b.rlen) * (k - g/b.rlen) * b.r  +  (g/b.rlen) * AffineDeltaR.segment<Dim>(Dim*bi);
+//		for(int d1=0; d1<TDIM; d1++)
+//		{   //check the sign here!
+//			df_on_i[d1] = (bnd.r[d1]/bnd.drlen)*DeltaRparallel * (k + f/bnd.drlen) - (f/bnd.drlen)*DeltaRtt.r[d1];
+//			df_on_j[d1] = -df_on_i[d1];
+//		} 
 
 		//Add the induced force to the n_d2Udvdgamma vector
 		n_d2Udvdgamma.segment<Dim>(Dim*b.i) += D2i;
 		n_d2Udvdgamma.segment<Dim>(Dim*b.j) -= D2i;
 	}
 }
-
-
 
 /**
  *	This method calculates the linear order change in energy when each bond is extended according to DeltaR_bond.
@@ -1002,13 +1027,16 @@ void CBondList<Dim>::CalculateCijkl(cCIJKL<Dim> &cijkl, dbl unstress_coeff, dbl 
 		cijkl.print();
 }
 
-/**
- *	This method takes in a MatrixInterface (which must already contain a valid LU decomposition!) 
- *	and a strain tensor and calculates the vectors
- *		n_d2Udvdgamma
- *		uNonAffine_node
- *		DeltaR_bond
- */
+template<int Dim>
+void CBondList<Dim>::CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
+{
+	MatrixInterface<dbl> D1;
+	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
+	D1.LUdecomp();
+
+	CalculateDetailedResponse(D1, strain_tensor, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
+}
+
 template<int Dim>
 void CBondList<Dim>::CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
 {
@@ -1026,88 +1054,10 @@ void CBondList<Dim>::CalculateDetailedResponse(MatrixInterface<dbl> &D1, dmat co
 	D1.solve_Mx_equals_b(uNonAffine_node, n_d2Udvdgamma);
 }
 
-/**
- *	Same as above except that you don't have to give it a MaterixInterface object.
- *	Instead, it writes down the Hessian and performs the LU decomposition.
- */
-template<int Dim>
-void CBondList<Dim>::CalculateDetailedResponse(dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
-{
-	MatrixInterface<dbl> D1;
-	ComputeHessian(D1.A, unstress_coeff, stress_coeff, 1e-12);
-	D1.LUdecomp();
-
-	CalculateDetailedResponse(D1, strain_tensor, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
-}
-
-template<int Dim>
-void CBondList<Dim>::CalculateDetailedResponse_FixedNodes(MatrixInterface<dbl> &D1, dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
-{
-	assert((int)fixed.size() == N);
-	index_map fixedDOFMap;
-	GetFixedDOFMap(fixed, fixedDOFMap);
-
-	int Nvar = Dim*N;
-	int Nvar_partial = fixedDOFMap.size();
-	assert(Nvar = fixedDOFMap.full_size);
-	assert(Nvar_partial <= Nvar);
-	assert(Nvar_partial >= 0);
-
-	Eigen::VectorXd n_d2Udvdgamma_partial = Eigen::VectorXd::Zero(Nvar_partial);
-	Eigen::VectorXd uNonAffine_node_partial = Eigen::VectorXd::Zero(Nvar_partial);
-	n_d2Udvdgamma = Eigen::VectorXd::Zero(Nvar);
-	uNonAffine_node = Eigen::VectorXd::Zero(Nvar);
-	DeltaR_bond = Eigen::VectorXd::Zero(Dim*(int)list.size());
-
-	//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
-	//Also, calculate the forces on each particle due to the change in metric.
-	Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
-
-	//Set the force to be zero for all fixed nodes
-	for(int i=0; i<Nvar; ++i)
-		if( fixedDOFMap.inv(i) == -1 )
-			n_d2Udvdgamma[i] = 0.;
-
-	//Convert the full n_d2Udvdgamm to the partial version using the map
-	for(int im=0; im<Nvar_partial; ++im)
-		n_d2Udvdgamma_partial[im] = n_d2Udvdgamma[ fixedDOFMap[im] ];
-	
-	//Solve for the non-affine displacement 
-	assert(D1.A.rows() == fixedDOFMap.size());
-	assert(D1.A.rows() == Nvar_partial); //redundant
-	D1.solve_Mx_equals_b(uNonAffine_node_partial, n_d2Udvdgamma_partial);
-
-	//Convert uNonAffine_node_partial to the full version (which has already been zero-initialized
-	for(int im=0; im<Nvar_partial; ++im)
-		uNonAffine_node[ fixedDOFMap[im] ] = uNonAffine_node_partial[im];
-}
-
-/**
- *	Same as above except that you don't have to give it a MaterixInterface object.
- *	Instead, it writes down the Hessian and performs the LU decomposition.
- */
-template<int Dim>
-void CBondList<Dim>::CalculateDetailedResponse_FixedNodes(dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const
-{
-	index_map fixedDOFMap;
-	GetFixedDOFMap(fixed, fixedDOFMap);
-
-	MatrixInterface<dbl> D1;
-	ComputeHessianWithFixedDOF(D1.A, fixedDOFMap, unstress_coeff, stress_coeff, 1e-12);
-	D1.LUdecomp();
-
-	CalculateDetailedResponse_FixedNodes(D1, strain_tensor, fixed, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
-}
-
-
-
-
-/**
- *	Same as above, except also calculate the change in energy.
- *	If the bond between nodes i and j has a change in energy of dE_bond,
- *	then each node has a change in energy of 1/2 dE_bond (plus 
- *	contributions from their other neighbors).
- */
+//Same as above, except also calculate the change in energy.
+//If the bond between particles i and j has a change in energy of dE_bond,
+//then each particle has a change in energy of 1/2 dE_bond (plus
+//contributions from their other neighbors).
 template<int Dim>
 void CBondList<Dim>::CalculateDetailedResponse_EnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &energyChange) const
 {
@@ -1135,9 +1085,7 @@ void CBondList<Dim>::CalculateDetailedResponse_EnergyChange(MatrixInterface<dbl>
 	}
 }
 
-/**
- * Same as above, except calculates the change in energy of bonds instead of nodes.
- */
+//Same as above, except calculates the change in energy of bonds instead of particles.
 template<int Dim>
 void CBondList<Dim>::CalculateDetailedResponse_BondEnergyChange(MatrixInterface<dbl> &D1, dmat const &strain_tensor, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const
 {
@@ -1160,58 +1108,11 @@ void CBondList<Dim>::CalculateDetailedResponse_BondEnergyChange(MatrixInterface<
 		DeltaRperp2     = DeltaR_total.squaredNorm() - DeltaRparallel2;
 		bondE = 0.5*(k*DeltaRparallel2 + g*DeltaRperp2/b.rlen);
 		bondEnergyChange[bi] = bondE;
+
+//		energyChange[b.i] += 0.5*bondE;
+//		energyChange[b.j] += 0.5*bondE;
 	}
 }
-
-/**
- * Same as above, except for fixed nodes.
- */
-template<int Dim>
-void CBondList<Dim>::CalculateDetailedResponse_BondEnergyChange_FixedNodes(MatrixInterface<dbl> &D1, dmat const &strain_tensor, vector<bool> const &fixed, Eigen::VectorXd &uNonAffine_node, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff, Eigen::VectorXd &bondEnergyChange) const
-{
-	CalculateDetailedResponse_FixedNodes(D1, strain_tensor, fixed, uNonAffine_node, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff);
-
-	bondEnergyChange = Eigen::VectorXd::Zero(GetNBonds());
-
-	//Add the non-affine extension of each bond to the affine extension and calculate the change in energy for that bond
-	dvec DeltaR_total;
-	dbl g, k, DeltaRparallel2, DeltaRperp2;
-	dbl bondE;
-	for(int bi=0; bi<(int)list.size(); ++bi)
-	{
-		BOND const &b = list[bi];
-		DeltaR_total = DeltaR_bond.segment<Dim>(Dim*bi) + uNonAffine_node.segment<Dim>(Dim*b.j) - uNonAffine_node.segment<Dim>(Dim*b.i);
-
-		g = b.g*stress_coeff;
-		k = b.k*unstress_coeff;
-		DeltaRparallel2 = POW2(DeltaR_total.dot(b.r)/b.rlen);
-		DeltaRperp2     = DeltaR_total.squaredNorm() - DeltaRparallel2;
-		bondE = 0.5*(k*DeltaRparallel2 + g*DeltaRperp2/b.rlen);
-		bondEnergyChange[bi] = bondE;
-	}
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 template<int Dim>
 void CBondList<Dim>::CalculateStdData(CStdData<Dim> &Data, bool CalcCijkl, bool CalcHess) const
@@ -1306,21 +1207,21 @@ bool CBondList<Dim>::CheckConsistency() const
 	return false;
 }
 
+
+
 template<int Dim>
-void CBondList<Dim>::GetFixedDOFMap(vector<bool> const &fixed, index_map &fixedDOFMap) const
+void CBondList<Dim>::GetFixedDOFMap(index_map &fixedDOFMap) const
 {
-	assert((int)fixed.size() == N);
+	assert((int)fixedNodes.size() == N);
 
 	vector<bool> fixedDOF(Dim*N, false);
 	for(int i=0; i<N; ++i)
-		if(fixed[i]==true)
-			for(int dd=0; dd<Dim; ++dd)
+		if(fixedNodes[i]==true)
+			for(int dd=0; dd<DIM; ++dd)
 				fixedDOF[i*Dim+dd] = true;
 
 	fixedDOFMap.initialize(Dim*N);
 	fixedDOFMap.set_map(fixedDOF);
-
-	//partial check
 	for(int im=0; im<fixedDOFMap.size(); ++im)
 		assert(fixedDOF[fixedDOFMap[im]] == false);
 }

@@ -65,6 +65,7 @@ CDatabase::CDatabase(string fn, NcFile::FileMode mode)
 #include "StaticDB.h"
 #include "StdDataDB.h"
 #include "SoftSpotArrayDatabase.h"
+#include "NetworkDB.h"
 
 #endif //DONT_USE_NETCDF
 

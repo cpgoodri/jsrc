@@ -15,7 +15,7 @@ using namespace std;
 
 typedef Eigen::Matrix<dbl,DIM,DIM> dmat;
 
-
+/*
 void test1(int N, dbl phi, int seed)
 {
 
@@ -52,6 +52,7 @@ if(false)
 
 
 }
+*/
 
 void test2(int N, dbl phi, int seed)
 {

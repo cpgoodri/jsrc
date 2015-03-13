@@ -11,6 +11,8 @@
 namespace LiuJamming
 {
 
+template <int Dim> class CNetworkDatabase;
+
 template <int Dim>
 class CNetworkState
 {
@@ -35,7 +37,8 @@ public:
 //Constructors/Destructors and copy operators
 	CNetworkState();														//!<Default constructor
 	CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness);
-	CNetowrkState(CNetworkState const &copy);								//!<Copy constructor
+	CNetworkState(CNetworkState const &copy);								//!<Copy constructor
+	CNetworkState(CNetworkState const &copy, ivec copies_per_side);			//!<Construct the CNetworkState from multiple copies of copy.
 	CNetworkState<Dim> &operator=(CNetworkState<Dim> const &copy);			//!<Copy operator
 	~CNetworkState();
 
@@ -85,6 +88,8 @@ public:
 	dbl  GetVolume() const;				//!<Get the volume
 	int  GetNodeNumber() const;
 	int  GetNBonds() const;
+
+	friend class CNetworkDatabase<Dim>;
 };
 
 template<int Dim>
@@ -106,7 +111,7 @@ CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstre
 }
 
 template<int Dim>
-CNetowrkState<Dim>::CNetowrkState(CNetworkState<Dim> const &copy)
+CNetworkState<Dim>::CNetworkState(CNetworkState<Dim> const &copy)
 	: N(0),
 	  Nbonds(0),
 	  Box(NULL),
@@ -115,64 +120,223 @@ CNetowrkState<Dim>::CNetowrkState(CNetworkState<Dim> const &copy)
 	(*this) = copy;
 }
 
+template<int Dim>
+static void cell_to_index(Eigen::Matrix<int,Dim,1> copies_per_side, Eigen::Matrix<int,Dim,1> cell, int &index)
+{
+	index = 0;
+	int m = 1;
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		index += cell[dd]*m;
+		m *= copies_per_side[dd];
+	}
+}
+template<int Dim>
+static void calculate_cell(int c, Eigen::Matrix<int,Dim,1> copies_per_side, Eigen::Matrix<int,Dim,1> &cell)
+{
+	cell = Eigen::Matrix<int,Dim,1>::Zero();
+	for(int i=0; i<c; ++i)
+	{
+		++cell[0];
+		for(int dd=0; dd<Dim; ++dd)
+		{
+			if(cell[dd] >= copies_per_side[dd])
+			{
+				assert( cell[dd]==copies_per_side[dd] );
+				assert( dd < Dim-1 );
+				cell[dd] -= copies_per_side[dd];
+				++cell[dd+1];
+			}
+		}
+	}
+}
+
 /*
 template<int Dim>
-CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
-	: N(0),
-	  Box(NULL),
-	  Potential(NULL)
+static void calculate_offset(int c, Eigen::Matrix<int,Dim,1> copies_per_side, Eigen::Matrix<dbl,Dim,1> &offset)
 {
-	if(Box!=NULL)		delete Box;
-	if(Potential!=NULL)	delete Potential;
-	Box			= s_in.GetBox()->Clone();		//Clone() gives a deep copy
-	Potential   = new CHarmonicSpringPotential(); //This is the only potential I have implemented so far for springs
-
-	CStaticState<Dim> s(s_in);
-	CStaticComputer<Dim> c(s);
-	if(c.StdPrepareSystem())
-	{
-		printf("Warning!!!!\n");
-		assert(false);
-	}
-	c.CalculateStdData(false,false);
-
-	N = c.Data.NPp;
-	Nbonds = c.Bonds.GetNBonds();
-
-	Positions   = Eigen::VectorXd::Zero(Dim*N);
-	Bondi       = Eigen::VectorXi::Zero(Nbonds);
-	Bondj       = Eigen::VectorXi::Zero(Nbonds);
-	Stiffnesses	= Eigen::VectorXd::Zero(Nbonds);
-	ELengths    = Eigen::VectorXd::Zero(Nbonds);
-	assert(N == c.RattlerMap.size());
-
-	//Set node positions
-	Eigen::VectorXd PosTemp;
-	s_in.GetPositionsVirtual(PosTemp);
-	for(int im=0; im<N; ++im)
-		for(int dd=0; dd<Dim; ++dd)
-			Positions[Dim*im+dd] = PosTemp[Dim*c.RattlerMap[im]+dd];
-
-	//Set equilibrium lengths and stiffnesses
-	for(int bi=0; bi<Nbonds; ++bi)
-	{
-		Bondi[bi] = c.Bonds[bi].i;
-		Bondj[bi] = c.Bonds[bi].j;
-
-		dbl radsum = s.GetRadius(c.RattlerMap[c.Bonds[bi].i]) + s.GetRadius(c.RattlerMap[c.Bonds[bi].j]);
-		if(MakeUnstressed)
-			ELengths[bi] = c.Bonds[bi].rlen; //Use current distance between nodes
-		else
-			ELengths[bi] = radsum; //Use the sum of the radii of the original packing.
-
-		if(UseUnitStiffness)
-			Stiffnesses[bi] = 1.;
-		else
-			Stiffnesses[bi] = 1./POW2(radsum); //Not sure if this works for alpha!=2
-	}
+	Eigen::Matrix<int,Dim,1> cell;
+	calculate_cell(c, copies_per_side, cell);
+	for(int dd=0; dd<Dim; ++dd)
+		offset[dd] = ((dbl)cell[dd])/((dbl)copies_per_side[dd]);
 }
 */
 
+template<int Dim>
+CNetworkState<Dim>::CNetworkState(CNetworkState<Dim> const &copy, ivec copies_per_side)
+	: N(0),
+	  Nbonds(0),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	int Ncopies = 1;
+	for(int dd=0; dd<Dim; ++dd)
+	{
+		assert(copies_per_side[dd]>0);
+		Ncopies *= copies_per_side[dd];
+	}
+
+	if(Box!=NULL)		delete Box;
+	if(Potential!=NULL)	delete Potential;
+	
+	Box			= copy.GetBox()->Clone();		//Clone() gives a deep copy
+	Potential   = new CHarmonicSpringPotential(); //WARNING!! NOT GENERAL. This is the only potential I have implemented so far for springs
+
+	//Adjust the size of the box.
+	dmat Trans, Trans_new;
+	Box->GetTransformation(Trans);
+	dvec cps_dbl;
+	for(int dd=0; dd<Dim; ++dd)	cps_dbl[dd] = (dbl)copies_per_side[dd];
+	Trans_new = Trans * (cps_dbl.asDiagonal());
+	Box->SetTransformation(Trans_new);
+	
+	///////////////////////////
+	/////Set the positions/////
+	///////////////////////////
+	int Nsmall = copy.GetNodeNumber();
+	N = Ncopies*Nsmall;
+	Positions = Eigen::VectorXd::Zero(Dim*N);
+
+	Eigen::VectorXd ptemp;
+	copy.GetPositionsVirtual(ptemp);
+	assert(ptemp.size()*Ncopies == Positions.size());
+
+	//divide ptemp by copies_per_cell
+	int ii, dd;
+	for(ii=0; ii<Nsmall; ++ii)
+		for(dd=0; dd<Dim; ++dd)
+			ptemp[Dim*ii+dd] /= ((dbl)copies_per_side[dd]);
+
+	dvec offset;
+	int start;
+	for(int c=0; c<Ncopies; ++c)
+	{
+		calculate_offset(c, copies_per_side, offset);
+		start = Nsmall*c;
+		for(ii=0; ii<Nsmall; ++ii)
+		{
+			for(dd=0; dd<Dim; ++dd)
+				Positions[Dim*(start+ii) + dd] = ptemp[Dim*ii+dd]+offset[dd];
+//			SetRadius(start+ii, copy.GetRadius(ii));
+		}
+	}
+
+	///////////////////////
+	/////Set the bonds/////
+	///////////////////////
+	int NBsmall = copy.GetNBonds();
+	Nbonds = Ncopies*NBsmall;
+	Bondi		= Eigen::VectorXi::Zero(Nbonds);
+	Bondj		= Eigen::VectorXi::Zero(Nbonds);
+	Stiffnesses	= Eigen::VectorXd::Zero(Nbonds);
+	ELengths	= Eigen::VectorXd::Zero(Nbonds);
+
+	int i,j;
+	dbl k,l;
+	dvec Displacement, DispTemp, diff;
+	int jj;
+	vector<bool> bondSet(Nbonds, false);
+	for(int bi=0; bi<NBsmall; ++bi)
+	{
+		copy.GetBondInfo(bi, i, j, l, k);
+		copy.GetDisplacement(i,j,Displacement);
+
+		for(int c1=0; c1<Ncopies; ++c1)
+		{
+			ii = Nsmall*c1 + i;
+			bool found = false;
+			for(int c2=0; c2<Ncopies; ++c2)
+			{
+				jj = Nsmall*c2 + j;
+				GetDisplacement(ii, jj, DispTemp);
+				diff = Displacement - DispTemp;
+				if(diff.norm() < 1e-8)
+				{
+					//add the bond
+					int bbi = NBsmall*c1 + bi;
+					assert( bondSet[bbi] == false );
+					Bondi[bbi] = ii;
+					Bondj[bbi] = jj;
+					Stiffnesses[bbi] = k;
+					ELengths[bbi] = l;
+					bondSet[bbi] = true;
+				
+					found = true;
+					break;
+				}
+			}
+			if(!found) printf("WARNING! pair not found! %i %i\n", i, j);
+		}
+	}
+
+/*
+
+		//figure out if the bond crosses a boundary.
+		ivec cell_offset;
+
+		copy.GetBondInfo(bi, i, j, l, k);
+		assert(i<Nsmall);
+		assert(j<Nsmall);
+		GetDisplacement(i,j,Displacement); //Displacement is the distance in the large system
+
+		//Displacement is the distance from j to i (not the other way around!)
+		for(int dd=0; dd<Dim; ++dd)
+		{
+			if(Displacement[dd] > 0.5/((dbl)copies_per_side[dd]))
+				cell_offset[dd] = 1;
+			else if(Displacement[dd] < -0.5/((dbl)copies_per_side[dd]))
+				cell_offset[dd] = -1;
+			else
+				cell_offset[dd] = 0;
+		}
+		
+		vector<bool> bondSet(Nbonds, false);
+		for(int c=0; c<Ncopies; ++c)
+		{
+			ivec cell;
+			calculate_cell(c, copies_per_side, cell);
+			ivec nbr_cell = cell + cell_offset;
+
+			//apply periodic boundary conditions
+			for(int dd=0; dd<Dim; ++dd)
+			{
+				if(nbr_cell[dd] >= copies_per_side[dd])
+					nbr_cell[dd] -= copies_per_side[dd];
+				if(nbr_cell[dd] < 0)
+					nbr_cell[dd] += copies_per_side[dd];
+			}
+
+			//Now connect node i in cell "cell" with node j in cell "nbr_cell"
+			int nbr_cell_index;
+			cell_to_index(copies_per_side, nbr_cell, nbr_cell_index);
+			int ii, jj;
+			ii = Nsmall*c + i;
+			jj = Nsmall*nbr_cell_index + j;
+
+			dvec disp1, disp2;
+			GetDisplacement(ii,jj,disp1); //Displacement is the distance in the large system
+			copy.GetDisplacement(i,j,disp2);
+			dvec diff = disp1-disp2;
+			if(diff.norm() > 1e-5)
+			{
+				printf("%e %e, i %i, j %i, %i %i\n", diff[0], diff[1], i, j, cell_offset[0], cell_offset[1]);
+			}
+
+
+			//add the bond
+			int bbi = NBsmall*c + bi;
+			assert( bondSet[bbi] == false );
+			Bondi[bbi] = ii;
+			Bondj[bbi] = jj;
+			Stiffnesses[bbi] = k;
+			ELengths[bbi] = l;
+			bondSet[bbi] = true;
+		}
+	}
+	*/
+}	
+	
+	
 template<int Dim>
 void CNetworkState<Dim>::InitializeFromStaticState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
 {
@@ -482,13 +646,13 @@ void CNetworkState<Dim>::Getij(int bi, int &i, int &j) const
 }
 
 template <int Dim>
-void CNetworkState<Dim>::Geti(int bi) const
+int CNetworkState<Dim>::Geti(int bi) const
 {
 	return Bondi[bi];
 }
 
 template <int Dim>
-void CNetworkState<Dim>::Getj(int bi) const
+int CNetworkState<Dim>::Getj(int bi) const
 {
 	return Bondj[bi];
 }

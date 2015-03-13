@@ -1,7 +1,7 @@
 #DIR = /data0/home/cpgoodri/jcode/ssdirectional/jsrc
 DIR = /home/cpgoodri/jsrc
 
-name=test3
+name=test4
 obj=$(name).o
 
 #define some computer names
