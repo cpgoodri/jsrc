@@ -36,6 +36,7 @@ private:
 public:
 //Constructors/Destructors and copy operators
 	CNetworkState();														//!<Default constructor
+//	CNetworkState(int N, int Nb, dbl V);									//!<"empty" constructor
 	CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness);
 	CNetworkState(CNetworkState const &copy);								//!<Copy constructor
 	CNetworkState(CNetworkState const &copy, ivec copies_per_side);			//!<Construct the CNetworkState from multiple copies of copy.
@@ -44,6 +45,12 @@ public:
 
 //Functions to set properties of the system
 	void InitializeFromStaticState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness);
+	void InitializeSimpleNetwork(vector<dvec> const &pos, vector< std::pair<int,int> > const &bonds, dbl _V);
+
+//Set box
+	void SetBox(CBox<Dim> *t_Box);				//!<Set the box
+	void SetBoxPeriodic(int NonPeriodicDim=0);	//!<Set the box to be periodic
+	void AssumeRectangularSymmetry();			//!<Set the assumption that the box is rectangular
 
 	void SetPositions		(const Eigen::VectorXd &t_Positions);		//!<Set node positions
 	void SetPositionsVirtual(const Eigen::VectorXd &t_Positions);
@@ -99,6 +106,28 @@ CNetworkState<Dim>::CNetworkState()
 	  Box(NULL),
 	  Potential(NULL)
 {}
+
+/*
+template<int Dim>
+CNetworkState<DIM>::CNetworkState(int _N, int _Nb, dbl V)
+	: N(_N),
+	  Nbonds(_Nb),
+	  Box(NULL),
+	  Potential(NULL)
+{
+	SetPeriodicBox(Dim); //initialize to have free bcs.
+	SetVolume(_V);
+
+	if(Potential!=NULL)	delete Potential;
+	Potential   = new CHarmonicSpringPotential(); //WARNING!! NOT GENERAL. This is the only potential I have implemented so far for springs
+
+	Positions   = Eigen::VectorXd::Zero(Dim*N);
+	Bondi       = Eigen::VectorXi::Zero(Nbonds);
+	Bondj       = Eigen::VectorXi::Zero(Nbonds);
+	Stiffnesses	= Eigen::VectorXd::Zero(Nbonds);
+	ELengths    = Eigen::VectorXd::Zero(Nbonds);
+}
+*/
 
 template<int Dim>
 CNetworkState<Dim>::CNetworkState(CStaticState<Dim> const &s_in, bool MakeUnstressed, bool UseUnitStiffness)
@@ -390,6 +419,56 @@ void CNetworkState<Dim>::InitializeFromStaticState(CStaticState<Dim> const &s_in
 	}
 }
 
+template<int Dim>
+void CNetworkState<Dim>::InitializeSimpleNetwork(vector<dvec> const &pos, vector< std::pair<int,int> > const &bonds, dbl _V)
+{
+	SetBoxPeriodic(Dim); //initialize to have free bcs.
+	SetVolume(_V);
+
+	if(Potential!=NULL)	delete Potential;
+	Potential   = new CHarmonicSpringPotential(); //WARNING!! NOT GENERAL. This is the only potential I have implemented so far for springs
+
+	N = (int)pos.size();
+	Nbonds = bonds.size();
+
+	Positions   = Eigen::VectorXd::Zero(Dim*N);
+	Bondi       = Eigen::VectorXi::Zero(Nbonds);
+	Bondj       = Eigen::VectorXi::Zero(Nbonds);
+	Stiffnesses	= Eigen::VectorXd::Zero(Nbonds);
+	ELengths    = Eigen::VectorXd::Zero(Nbonds);
+
+	for(int i=0; i<N; ++i)
+		SetNodePosition(pos[i], i);
+//		for(int dd=0; dd<Dim; ++dd)
+//			Positions[Dim*i+dd] = pos[i][dd];
+
+	int ii, jj;
+	dvec disp;
+	for(int bi=0; bi<Nbonds; ++bi)
+	{
+		ii = bonds[bi].first;
+		jj = bonds[bi].second;
+		assert(ii >= 0);
+		assert(jj >= 0);
+		assert(ii < N);
+		assert(jj < N);
+		Bondi[bi] = ii;
+		Bondj[bi] = jj;
+
+		//make bond unstressed
+		GetDisplacement(ii,jj,disp);
+		ELengths[bi] = disp.norm();
+
+		//set unit stiffness
+		Stiffnesses[bi] = 1.;
+	}
+
+}
+
+
+
+
+
 template<int Dim>	
 CNetworkState<Dim>::~CNetworkState()
 {
@@ -418,6 +497,38 @@ CNetworkState<Dim> &CNetworkState<Dim>::operator=(CNetworkState<Dim> const &copy
 	}
 	return *this;
 }
+
+
+
+template <int Dim>
+void CNetworkState<Dim>::SetBox(CBox<Dim> *t_Box)
+{
+	if(Box!=NULL)	delete Box;
+	Box = t_Box->Clone();
+}
+
+template<int Dim>
+void CNetworkState<Dim>::SetBoxPeriodic(int NonPeriodicDim)
+{
+	if(Box!=NULL)	delete Box;
+	switch(NonPeriodicDim)
+	{
+		case 0:		Box = new CPeriodicBox<Dim,0>();	break;
+		case 1:		Box = new CPeriodicBox<Dim,1>();	break;
+		case Dim:	Box = new CPeriodicBox<Dim,Dim>();	break;
+		default:	assert(false);
+	}
+}
+
+template<int Dim>
+void CNetworkState<Dim>::AssumeRectangularSymmetry()
+{
+	Box->SetSymmetry(Box->RECTANGULAR);
+}
+
+
+
+
 
 
 template <int Dim>

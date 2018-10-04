@@ -158,9 +158,12 @@ void cCIJKL<2>::SetArtificialValues(dbl c)
 Eigen::Matrix<dbl,3,3> cCIJKL<2>::get_Cik() const
 {
 	Eigen::Matrix<dbl, 3, 3> Cik;
-	Cik << 	cxxxx,	cxxyy,	2.*cxxxy,
-				0.,	cyyyy,	2.*cyyxy,
-				0.,		0.,	4.*cxyxy;
+	Cik << 	cxxxx,	cxxyy,	cxxxy,
+				0.,	cyyyy,	cyyxy,
+				0.,		0.,	cxyxy;
+//	Cik << 	cxxxx,	cxxyy,	2.*cxxxy,
+//				0.,	cyyyy,	2.*cyyxy,
+//				0.,		0.,	4.*cxyxy;
 	return Cik;
 }
 
@@ -570,12 +573,18 @@ void cCIJKL<3>::SetArtificialValues(dbl c)
 Eigen::Matrix<dbl,6,6> cCIJKL<3>::get_Cik() const
 {
 	Eigen::Matrix<dbl, 6, 6> Cik;
-	Cik << 	cxxxx,	cxxyy,	cxxzz,	2.*cxxyz,	2.*cxxxz,	2.*cxxxy,
-				0.,	cyyyy,	cyyzz,	2.*cyyyz,	2.*cyyxz,	2.*cyyxy,
-				0.,		0.,	czzzz,	2.*czzyz, 	2.*czzxz,	2.*czzxy,
-				0.,		0.,		0.,	4.*cyzyz, 	4.*cyzxz,	4.*cyzxy,
-				0.,		0.,		0.,			0.,	4.*cxzxz,	4.*cxzxy,
-				0.,		0.,		0.,			0.,		 	0.,	4.*cxyxy;
+	Cik << 	 cxxxx,	 cxxyy,	 cxxzz,	 cxxyz,	 cxxxz,	 cxxxy,
+				0.,	 cyyyy,	 cyyzz,	 cyyyz,	 cyyxz,	 cyyxy,
+				0.,		0.,	 czzzz,	 czzyz,  czzxz,	 czzxy,
+				0.,		0.,		0.,	 cyzyz,  cyzxz,	 cyzxy,
+				0.,		0.,		0.,		0.,	 cxzxz,	 cxzxy,
+				0.,		0.,		0.,		0.,		0.,	 cxyxy;
+//	Cik << 	cxxxx,	cxxyy,	cxxzz,	2.*cxxyz,	2.*cxxxz,	2.*cxxxy,
+//				0.,	cyyyy,	cyyzz,	2.*cyyyz,	2.*cyyxz,	2.*cyyxy,
+//				0.,		0.,	czzzz,	2.*czzyz, 	2.*czzxz,	2.*czzxy,
+//				0.,		0.,		0.,	4.*cyzyz, 	4.*cyzxz,	4.*cyzxy,
+//				0.,		0.,		0.,			0.,	4.*cxzxz,	4.*cxzxy,
+//				0.,		0.,		0.,			0.,		 	0.,	4.*cxyxy;
 
 	return Cik;
 }

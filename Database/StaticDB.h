@@ -23,7 +23,8 @@ namespace LiuJamming
 template <int Dim>
 class CStaticDatabase : public CDatabase
 {
-private:
+//private:
+public:
 	typedef CStaticState<Dim> STATE;
 	int NP;
 	NcDim *recDim, *dimDim, *dm2Dim, *NPDim, *dofDim, *strDim;
@@ -108,6 +109,35 @@ void CStaticDatabase<Dim>::GetDimVar()
 	assert(Mode==NcFile::ReadOnly||Mode==NcFile::Write);
 
 	//Get the dimensions
+	if(		!(recDim = File.get_dim("rec"))
+		||	!(dimDim = File.get_dim("dim"))
+		||	!(dm2Dim = File.get_dim("dim2"))
+		||	!(NPDim  = File.get_dim("NP"))
+		||	!(dofDim = File.get_dim("dof"))
+		||	!(strDim = File.get_dim("StringSize"))
+	  ){
+		printf("WARNING: Trouble getting the dimensions for the netCDF file.\n");
+		FAILFLAG = true;
+	}
+
+	//Get the variables
+	if(		!(posVar			= File.get_var("pos"))
+		||	!(radVar			= File.get_var("rad"))
+		||	!(BoxMatrixVar	= File.get_var("BoxMatrix"))
+		||	!(BoxStringVar	= File.get_var("BoxString"))
+	  ){
+		printf("WARNING: Trouble getting the variables for the netCDF file.\n");
+		FAILFLAG = true;
+	}
+}
+
+/*
+template <int Dim>
+void CStaticDatabase<Dim>::GetDimVar()
+{
+	assert(Mode==NcFile::ReadOnly||Mode==NcFile::Write);
+
+	//Get the dimensions
 	recDim = File.get_dim("rec");
 	dimDim = File.get_dim("dim");
 	dm2Dim = File.get_dim("dim2");
@@ -121,6 +151,7 @@ void CStaticDatabase<Dim>::GetDimVar()
 	BoxMatrixVar	= File.get_var("BoxMatrix");
 	BoxStringVar	= File.get_var("BoxString");
 }
+*/
 
 template <int Dim>
 int CStaticDatabase<Dim>::GetNumRecs() const
@@ -184,6 +215,7 @@ void CStaticDatabase<Dim>::ReadLast(STATE &s)
 template <int Dim>
 void CStaticDatabase<Dim>::Read(STATE &s, int rec)
 {
+	assert(FAILFLAG == false);
 	assert(Mode==NcFile::ReadOnly);
 	assert(s.GetParticleNumber() == NP);
 	

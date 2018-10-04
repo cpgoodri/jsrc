@@ -102,20 +102,28 @@ void CStdDataDatabase<Dim>::GetDimVar()
 	assert(Mode==NcFile::ReadOnly||Mode==NcFile::Write);
 
 	//Get the dimensions
-	recDim		= File.get_dim("rec");
-	dm2Dim		= File.get_dim("dim2");
-	NcijklDim	= File.get_dim("Ncijkl");
+	if(		!(recDim		= File.get_dim("rec"))
+		||	!(dm2Dim		= File.get_dim("dim2"))
+		||	!(NcijklDim	= File.get_dim("Ncijkl"))
+	  ){
+		printf("WARNING: Trouble getting the dimensions for the netCDF file.\n");
+		FAILFLAG = true;
+	}
 
 	//Get the variables
-	NPpVar		= File.get_var("NPp");
-	NcVar		= File.get_var("Nc");
-	VolumeVar	= File.get_var("Volume");
-	EnergyVar	= File.get_var("Energy");
-	PressureVar	= File.get_var("Pressure");
-	StressVar	= File.get_var("Stress");
-	FabricVar	= File.get_var("Fabric");
-	MaxGradVar	= File.get_var("MaxGrad");
-	CijklVar	= File.get_var("Cijkl");
+	if(		!(NPpVar		= File.get_var("NPp"))
+		||	!(NcVar		= File.get_var("Nc"))
+		||	!(VolumeVar	= File.get_var("Volume"))
+		||	!(EnergyVar	= File.get_var("Energy"))
+		||	!(PressureVar	= File.get_var("Pressure"))
+		||	!(StressVar	= File.get_var("Stress"))
+		||	!(FabricVar	= File.get_var("Fabric"))
+		||	!(MaxGradVar	= File.get_var("MaxGrad"))
+		||	!(CijklVar	= File.get_var("Cijkl"))
+	  ){
+		printf("WARNING: Trouble getting the variables for the netCDF file.\n");
+		FAILFLAG = true;
+	}
 }
 
 template <int Dim>
@@ -160,6 +168,7 @@ void CStdDataDatabase<Dim>::ReadLast(DATA &data)
 template <int Dim>
 void CStdDataDatabase<Dim>::Read(DATA &data, int rec)
 {
+	assert(FAILFLAG == false);
 	assert(Mode==NcFile::ReadOnly);
 
 	NPpVar		-> set_cur(rec);

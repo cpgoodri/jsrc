@@ -16,13 +16,14 @@ public:
 	Eigen::VectorXi wrap;	//Length 3*NAtoms
 	Eigen::VectorXd vel;	//Length 3*NAtoms
 
+	CLammpsStateData(){};
 	CLammpsStateData(char *fn)
 	{
 		ReadLammpsState(fn);
 	};
 	
 	template<int DIM> void SetTransformationMatrix(Eigen::Matrix<dbl,DIM,DIM> &T);
-	void ReadLammpsState(char *fn);
+	int ReadLammpsState(char *fn);
 };
 
 template<int DIM>
@@ -40,15 +41,25 @@ void CLammpsStateData::SetTransformationMatrix(Eigen::Matrix<dbl,DIM,DIM> &T)
 	}
 }
 
-void CLammpsStateData::ReadLammpsState(char *fn)
+int CLammpsStateData::ReadLammpsState(char *fn)
 {
-	AssertThatFileExists(fn);
+//	AssertThatFileExists(fn);
+	if(!FileExists(fn))
+	{
+		printf("Warning: file %s does not exist\n", fn);
+		return 0;
+	}
 	string line;
 	ifstream file(fn);
 
 	assert(file.is_open());
 
 	std::getline(file,line); //throw away the first line
+	if(line.substr(0,32) != string("LAMMPS data file via write_data,"))
+	{
+		printf("Warning: line 1 = %s\n", line.c_str());
+		return 0;
+	}
 	std::getline(file,line); //throw away the second line
 
 	//process the third line
@@ -67,6 +78,9 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 	file >> ylo >> yhi >> tmp_str >> tmp_str;
 	file >> zlo >> zhi >> tmp_str >> tmp_str;
 	xy = xz = yz = 0.;
+	
+	//Throw away the rest of the current line
+	std::getline(file,line); 
 
 
 	//initialize vectors
@@ -79,6 +93,11 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 	//Throw away the next 3 lines
 	std::getline(file,line); 
 	std::getline(file,line); 
+	if(line != string("Masses"))
+	{
+		printf("Warning: line 10 = %s\n", line.c_str());
+		return 0;
+	}
 	std::getline(file,line); 
 
 	//read the masses
@@ -88,10 +107,17 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 		file >> i_temp >> masses[i];
 		assert(i_temp == i+1);
 	}
+	//Throw away the rest of the current line
+	std::getline(file,line); 
 
 	//Throw away the next 3 lines
 	std::getline(file,line); 
 	std::getline(file,line); 
+	if(line != string("Atoms"))
+	{
+		printf("Warning: line 15 = %s\n", line.c_str());
+		return 0;
+	}
 	std::getline(file,line); 
 
 	//read the positions, types and wraps
@@ -99,7 +125,11 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 	dbl x, y, z;
 	for(int i=0; i<NAtoms; ++i)
 	{
-		file >> index >> ptype >> x >> y >> z >> wx >> wy >> wz;
+		if(!(file >> index >> ptype >> x >> y >> z >> wx >> wy >> wz))
+		{
+			printf("Warning, reading data failed\n");
+			return 0;
+		}
 		index--;
 		assert(index>=0);
 		assert(index<NAtoms);
@@ -123,7 +153,11 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 	dbl vx, vy, vz;
 	for(int i=0; i<NAtoms; ++i)
 	{
-		file >> index >> vx >> vy >> vz;
+		if(!(file >> index >> vx >> vy >> vz))
+		{
+			printf("Warning, reading data failed\n");
+			return 0;
+		}
 		index--;
 		assert(index>=0);
 		assert(index<NAtoms);
@@ -132,6 +166,8 @@ void CLammpsStateData::ReadLammpsState(char *fn)
 		vel[3*index+1] = vy;
 		vel[3*index+2] = vz;
 	}
+
+	return 1;
 }
 
 

@@ -40,6 +40,11 @@ private:
 public:
 	void MinVariableWidth(vector<T> const &data, int Nppb, U minWidth);
 
+private:
+	void CDF_Private(vector<T> const &data, int Nppb);
+public:
+	void CDF(vector<T> const &data, int Nppb);
+
 	//Retreive histogram:
 	inline int Nbins() const			{	return (int)hist.size();	};
 	inline U x(int i) const				{	return hist[i].first;		};
@@ -147,6 +152,58 @@ void Histogram<T,U>::VariableWidth_Private(vector<T> const &data, int Nppb)
 	count.clear();
 	Ndata = (int)data.size();
 
+	EvenIterator ei(Nppb,Ndata);
+//	ei.Print();
+
+	uint numBins = ei.GetNumBins();
+	typename vector<T>::const_iterator curr, next, last;
+	curr = data.begin();
+	last = data.end();
+	int Npib; //Number of points in the current bin;
+	U width, avg;
+	for(uint bi=0; bi<numBins; ++bi)
+	{
+		Npib = ei.sizes[bi];
+		next = curr + Npib;
+		assert(next <= last);
+
+		width = (*(next-1)) - (*curr);
+		avg = mean(curr,next);
+		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
+		count.push_back( Npib );
+
+		curr = next;
+	}
+
+/*
+	int s;
+	if(Ndata%Nppb==0)
+		s = Nppb;
+	else
+		s = Nppb-1;
+
+	typename vector<T>::const_iterator curr, next, last;
+	curr = data.begin();
+	last = data.end();
+	int Npib; //Number of points in the current bin;
+	U width, avg;
+	while(curr != last)
+	{
+		GetPartitionPointer(curr, last, next, s);
+		//current partition goes from curr to next.
+		Npib = next - curr;
+		assert(Npib == Nppb || Npib == Nppb-1);
+	
+		width = (*(next-1)) - (*curr);
+		avg = mean(curr,next);
+		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
+		count.push_back( Npib );
+
+		curr = next;
+	}
+*/
+
+/*	
 	typename vector<T>::const_iterator it1, it2;
 	int Npib; //Number of points in the current bin;
 	U width, avg;
@@ -156,13 +213,14 @@ void Histogram<T,U>::VariableWidth_Private(vector<T> const &data, int Nppb)
 		if(Npib <= 1) continue;
 
 		it1 = data.begin()+first;
-		it2 = it1 + Npib;
+		it2 = it1 + Npib; //This points to the first data element beyond the bin
 
-		width = (*it2) - (*it1);
+		width = (*(it2-1)) - (*it1);
 		avg = mean(it1,it2);
 		hist.push_back( std::make_pair(avg, Npib/(width*Ndata)) );
 		count.push_back( Npib );
 	}
+*/
 	assert(hist.size() == count.size());
 }
 
@@ -179,7 +237,7 @@ void Histogram<T,U>::VariableWidth(vector<T> const &data, int Nppb)
 	}
 }
 
-
+/*
 template <typename T, typename U>
 void Histogram<T,U>::MinVariableWidth_Private(vector<T> const &data, int Nppb, U minWidth)
 {
@@ -224,7 +282,42 @@ void Histogram<T,U>::MinVariableWidth(vector<T> const &data, int Nppb, U minWidt
 		MinVariableWidth_Private(sdata, Nppb, minWidth);
 	}
 }
+*/
 
+template <typename T, typename U>
+void Histogram<T,U>::CDF_Private(vector<T> const &data, int Nppb)
+{
+	assert(CheckSort(data));
+	hist.clear();
+	count.clear();
+	Ndata = (int)data.size();
+
+	typename vector<T>::const_iterator it;
+	uint n = 0;
+	for(it = data.begin(); it!=data.end(); ++it)
+	{
+		++n;
+		if(n%Nppb==Nppb-1 || n==Ndata)
+		{
+			hist.push_back( std::make_pair((*it),((dbl)n)/((dbl)Ndata)) );
+			count.push_back( n );
+		}
+	}
+	assert(hist.size() == count.size());
+}
+
+template <typename T, typename U>
+void Histogram<T,U>::CDF(vector<T> const &data, int Nppb)
+{
+	if(CheckSort(data))
+		CDF_Private(data, Nppb);
+	else
+	{
+		vector<T> sdata = data;
+		std::sort(sdata.begin(), sdata.end());
+		CDF_Private(sdata, Nppb);
+	}
+}
 
 
 

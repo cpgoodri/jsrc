@@ -286,9 +286,11 @@ void CGrid<Dim>::SetN(int _N)
 template <int Dim>
 void CGrid<Dim>::Allocate()
 {
+
 	dvec MaxDistance;
 	State->GetMaxDistance(MaxDistance);
 
+//	printf("Allocating the grid:\n");
 	//Compute the number of grid elements in each direction. Additionally,
 	//figure out the total number of cells as the product of all of these.
 	TotalCells = 1;
@@ -298,7 +300,7 @@ void CGrid<Dim>::Allocate()
 		assert(N_Cells[i] >= 3);
 		TotalCells*=N_Cells[i];
 		CellSize[i] = 1./((dbl)N_Cells[i]);
-		//printf("CellSize[%i] = %e\n", i, CellSize[i]);
+//		printf("\tN_Cells[%i] = %i, CellSize[%i] = %e\n", i, N_Cells[i], i, CellSize[i]);
 	}
 
 	if(!(CellList==NULL))

@@ -86,6 +86,10 @@ public:
 	void MultiplyForces(dbl m);										//!<Multiply all forces by a constant.
 	void MultiplyStiffnesses(dbl m);								//!<Multiply all spring constants by a constant.
 
+	void SetBond_E(int i, dbl E);
+	void SetBond_g(int i, dbl g);
+	void SetBond_k(int i, dbl k);
+
 ///@}
 
 //! @name Computations
@@ -129,6 +133,7 @@ public:
 	void Calculate_n_d2Udvdgamma(dmat const &strain_tensor, Eigen::VectorXd &n_d2Udvdgamma, Eigen::VectorXd &AffineDeltaR, dbl unstress_coeff, dbl stress_coeff) const;
 	dbl  CalculateEnergyChange(Eigen::VectorXd const &DeltaR_bond, dbl unstress_coeff, dbl stress_coeff) const;
 
+	void CalculateCijkl_FromStatesOfSelfStress(cCIJKL<Dim> &cijkl, Eigen::MatrixXd const &ssStates, dbl unstress_coeff=1., dbl stress_coeff=1.);
 public:
 
 //! @name Misc.
@@ -532,6 +537,25 @@ void CBondList<Dim>::MultiplyStiffnesses(dbl m)
 	for(typename vector<BOND>::iterator b=list.begin(); b!=list.end(); ++b)
 		b->k *= m;
 }
+
+template<int Dim>
+void CBondList<Dim>::SetBond_E(int i, dbl E)
+{
+	list[i].E = E;
+}
+
+template<int Dim>
+void CBondList<Dim>::SetBond_g(int i, dbl g)
+{
+	list[i].g = g;
+}
+
+template<int Dim>
+void CBondList<Dim>::SetBond_k(int i, dbl k)
+{
+	list[i].k = k;
+}
+
 
 template<int Dim>
 dbl  CBondList<Dim>::ComputeEnergy() const
@@ -1190,6 +1214,72 @@ void CBondList<Dim>::CalculateDetailedResponse_BondEnergyChange_FixedNodes(Matri
 		bondEnergyChange[bi] = bondE;
 	}
 }
+
+
+
+
+
+template<int Dim>
+void CBondList<Dim>::CalculateCijkl_FromStatesOfSelfStress(cCIJKL<Dim> &cijkl, Eigen::MatrixXd const &ssStates, dbl unstress_coeff, dbl stress_coeff)
+{
+	//CAUTION: this assumes (but does NOT check) that g=0 and k=1 for all bonds! NOT GENERAL!
+
+	int Nvar = Dim*N;
+	dmat strain_tensor;
+	dbl prefactor = 2./Volume;//The prefactor contains a 2 in it from the equation dE/V = (1/2)cijkl uij ukl.
+
+	Eigen::VectorXd n_d2Udvdgamma = Eigen::VectorXd::Zero(Nvar);
+	Eigen::VectorXd uNonAffine_node = Eigen::VectorXd::Zero(Nvar);
+	Eigen::VectorXd DeltaR_bond = Eigen::VectorXd::Zero(Dim*(int)list.size());
+	Eigen::VectorXd epsilon0_bond = Eigen::VectorXd::Zero(list.size());
+	Eigen::VectorXd sigma_bond = Eigen::VectorXd::Zero(list.size());
+	
+	Eigen::VectorXd ts_epsilon0_bond;	//"t" stands for tilde (meaning projected onto singular vectors, and "s" stands for only the "self-stress" space of singular vectors
+	Eigen::VectorXd ts_sigma_bond;		//"t" stands for tilde (meaning projected onto singular vectors, and "s" stands for only the "self-stress" space of singular vectors
+
+	for(int ii=0; ii<cCIJKL<Dim>::num_constants; ++ii)
+	{
+		//Set the strain tensor
+		cijkl.set_strain_tensor(strain_tensor, ii);
+
+		//Calculate the displacement vector for each bond in the metric defined by the strain tensor.
+		//Also, calculate the forces on each particle due to the change in metric.
+		Calculate_n_d2Udvdgamma(strain_tensor, n_d2Udvdgamma, DeltaR_bond, unstress_coeff, stress_coeff); 
+	
+		//Calulate the parallel part of DeltaR_bond
+		for(int bi=0; bi<list.size(); ++bi)
+			epsilon0_bond[bi] = DeltaR_bond.segment<Dim>(Dim*bi).dot(list[bi].r)/list[bi].rlen;
+
+		//Calculate the stress on each bond
+		for(int bi=0; bi<list.size(); ++bi)
+			sigma_bond[bi] = epsilon0_bond[bi] * list[bi].k;
+
+//		printf("strain_tensor = \n");
+//		cout << strain_tensor << endl;
+
+//		printf("epsilon0_bond = \n");
+//		cout << epsilon0_bond << endl;
+
+//		printf("rows = %i, cols = %i, size = %i\n", (int)ssStates.rows(), (int)ssStates.cols(), (int)epsilon0_bond.size());
+		//Project epsilon0 onto the states of self stress
+		ts_epsilon0_bond = ssStates.transpose() * epsilon0_bond;
+
+		//Project sigma onto the states of self stress
+		ts_sigma_bond = ssStates.transpose() * sigma_bond;
+
+		//Calculate the change in energy
+		dbl dE = 0.5*ts_epsilon0_bond.dot(ts_sigma_bond);
+		dE *= prefactor; //dE is now 2*dE/V. This comes from the equation dE/V = (1/2)cijkl uij ukl.
+		
+		//Set the ii'th elastic constant
+		cijkl.set_constant(dE, ii);
+
+	}
+
+
+}
+
+
 
 
 

@@ -1,19 +1,28 @@
-DIR = /data0/home/cpgoodri/jcode/test_project/jsrc
+#DIR = /data0/home/cpgoodri/jcode/ssdirectional/jsrc
+DIR = /home/cpgoodri/jsrc
 
-name=DiagonalizationTutorial
+name=NetworkTutorial
 obj=$(name).o
 
+#define some computer names
+Walnut_NAME=walnut
+Fiji_NAME=fiji
+
+#set this to the computer name you are using
+COMPUTER_NAME=walnut
 
 
 prjDIR = .
 prjOBJGQS = \
 $(obj)
 
-include $(DIR)/std_make.mk
+#include $(DIR)/MAKE/simple_make.mk
+include $(DIR)/MAKE/std_make.mk
 
 OBJGQS = \
 $(patsubst %,$(srcDIR)/%,$(srcOBJGQS)) \
 $(patsubst %,$(prjDIR)/%,$(prjOBJGQS))
+
 
 
 
@@ -31,6 +40,8 @@ $(name).out: $(OBJGQS)
 $(obj): $(StandardDependencies)
 
 
+clean:
+	\rm $(OBJGQS)
 
 
 

@@ -118,6 +118,7 @@ public:
 	void SetSquareLattice();					//!<Set positions to be in a square lattice (only in 2d)
 	void SetSquareLattice(int Lx, int Ly);		//!<Set positions to be in a square lattice (only in 2d)
 	void SetHexLattice();						//!<Set positions to be in a hexagonal lattice (only in 2d)
+	void SetHexLattice(int Lx, int Ly);			//!<Set positions to be in a hexagonal lattice (only in 2d)
 //Set 3d lattices
 	void SetFCCLattice();						//!<Set positions to be in an FCC lattice (only in 3d)
 	void SetFCCLattice(int Lx, int Ly, int Lz);	//!<Set positions to be in an FCC lattice (only in 3d)
@@ -488,6 +489,33 @@ void CStaticState<Dim>::SetSquareLattice(int Lx, int Ly)
 		}
 }
 
+template<int Dim>
+void CStaticState<Dim>::SetHexLattice()
+{
+	int L;
+	IsPerfectRoot(N,Dim,L);
+	if(POW2(L)!=N)
+	{
+		printf("ERROR: L^2 != N, with L=%i, N=%i is not a perfect root\n", L, N);
+		assert(false);
+	}
+	
+	SetHexLattice(L,L);
+}
+
+template<int Dim>
+void CStaticState<Dim>::SetHexLattice(int Lx, int Ly)
+{
+	assert(Lx*Ly==N);
+	if(Dim!=2)
+	{
+		printf("ERROR: can only set a square lattice when Dim = 2\n");
+		assert(false);
+	}
+
+	printf("ERROR: SetHexLattice(Lx,Ly) is not implemented yet!\n");
+	assert(false);
+}
 
 template <int Dim>
 void CStaticState<Dim>::SetFCCLattice()

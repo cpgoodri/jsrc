@@ -206,6 +206,111 @@ dbl CalculateParticipationRatio(int Nvar, dbl *vec)
 
 
 
+//if you have a list of size N, and you want to divide it up into m partitions, set
+//	s = N / m    (where this will drop the remainder)
+//Each partition will have size s or s+1
+template <class ForwardIterator>
+void SetPartitionBaseSize(ForwardIterator first, ForwardIterator last, uint m, uint &s)
+{
+	uint TotalSize = last - first;
+	s = TotalSize / m;
+}
+
+template <class ForwardIterator>
+void GetPartitionPointer(ForwardIterator const curr, ForwardIterator const last, ForwardIterator &next, uint s)
+{
+	assert(last >= curr);
+	uint diff = last - curr;
+	uint size;
+	if(diff % s == 0)	size = s;
+	else				size = s+1;
+	next = curr + size;
+//	if(next>last)
+		printf("WARNING: diff=%i, size=%i, s=%i, diff%%s=%i\n", diff, size, s, diff%s);
+	assert(next <= last);
+}
+
+
+class EvenIterator
+{
+public:
+	uint TargetSize;
+	uint TotalSize;
+	vector<uint> sizes;
+	EvenIterator(uint targetsize, uint totalsize)
+		: TargetSize(targetsize), TotalSize(totalsize)
+	{
+		initialize_sizes();
+	};
+
+	void initialize_sizes()
+	{
+		uint numBins = TotalSize / TargetSize;
+		uint remainder = TotalSize % TargetSize;
+		sizes.assign(numBins, TargetSize);
+
+		uint bin;
+		for(uint i=0; i<remainder; ++i)
+		{
+			bin=i%numBins;
+			assert(bin >= 0 && bin < numBins);
+			++sizes[bin];
+		}
+
+		uint sum=0;
+		for(vector<uint>::const_iterator it=sizes.begin(); it!=sizes.end(); ++it)
+			sum += (*it);
+		assert(sum == TotalSize);
+	}
+
+	uint GetNumBins()
+	{
+		return sizes.size();
+	}
+
+	void Print()
+	{
+		printf("%i bins with sizes:\n", (int)sizes.size());
+		for(vector<uint>::const_iterator it=sizes.begin(); it!=sizes.end(); ++it)
+			printf("%i\n", (*it));
+
+	}
+
+};
+
+
+
+
+
+/*
+int main()
+{
+	vector<int> a;
+	for(int i=0; i<96; ++i)	a.push_back(i);
+	uint s, m = 10;
+	vector<int>::iterator curr, next, last;
+	curr = a.begin();
+	last = a.end();
+	SetPartitionBaseSize(curr, last, m, s);
+	while(curr != last)
+	{
+		GetPartitionPointer(curr, last, next, s);
+		for(vector<int>::iterator it = curr; it!=next; ++it)
+			printf("%4i ", (*it));
+		printf("\n");
+		curr = next;
+	}
+}
+*/
+
+
+
+
+
+
+
+
+
 
 
 

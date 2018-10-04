@@ -26,6 +26,7 @@ public:
 	string filename;
 	NcFile File;
 	const int Mode;
+	bool FAILFLAG;
 
 	//To help keep a common api, subclasses should implement the following methods.
 	//
@@ -56,7 +57,8 @@ public:
 CDatabase::CDatabase(string fn, NcFile::FileMode mode)
 	: filename(fn),
 	  Mode(mode),
-	  File(fn.c_str(), mode)
+	  File(fn.c_str(), mode),
+	  FAILFLAG(false)
 {};
 
 
